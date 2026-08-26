@@ -6,7 +6,7 @@
 {% block title %}Positions — profdash{% endblock %}
 
 {% block content %}
-{{ page_header("Positions", total ~ " position(s) from mailing lists &amp; digests") }}
+{{ page_header("Positions", total ~ " position(s) from mailing lists & digests") }}
 
 <form method="get" action="/positions" class="flex flex-wrap items-center gap-2 mb-4">
   <input type="search" name="search" value="{{ qp.get('search', '') }}" placeholder="Search title / institution / professor&hellip;" autocomplete="off"

@@ -133,7 +133,7 @@
     {% include "_draft_card.html" %}
 
     {% call card("University Context",
-                 uni_ctx.deadlines|length ~ " deadlines" ~ (" &middot; " ~ uni_ctx.positions|length ~ " positions" if uni_ctx.positions else "")) %}
+                 uni_ctx.deadlines|length ~ " deadlines" ~ (" · " ~ uni_ctx.positions|length ~ " positions" if uni_ctx.positions else "")) %}
       {% if uni_ctx.deadlines or uni_ctx.positions %}
         {% if uni_ctx.deadlines %}
         <ul class="space-y-2 mb-3">

@@ -40,7 +40,7 @@
     {% endif %}
   {% endcall %}
 
-  {% call card("Overdue Follow-ups", "contacted &gt;21 days ago, still no reply") %}
+  {% call card("Overdue Follow-ups", "contacted >21 days ago, still no reply") %}
     {% if followups %}
       <ul class="divide-y divide-line -m-4">
         {% for f in followups %}
