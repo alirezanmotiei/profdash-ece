@@ -1,0 +1,160 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header, card, rec_badge, score_chip, status_badge, empty_state with context %}
+
+{% block title %}{{ u.university }} — profdash{% endblock %}
+
+{% block content %}
+{{ page_header(u.university, u.location_country or "", back_href="/universities", back_label="All universities") }}
+
+<div class="flex flex-wrap items-center gap-2 mb-5">
+  {% if u.department_url %}
+    <a href="{{ u.department_url }}" target="_blank" rel="noopener"
+       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent">&#127979; Department</a>
+  {% endif %}
+  <span class="inline-flex items-center h-7 px-2.5 rounded-full bg-surface2 text-xs text-muted">
+    {{ u.professors|length }} professors &middot; {{ u.deadlines|length }} deadlines &middot; {{ u.programs|length }} programs
+  </span>
+</div>
+
+{% if u.funding_note %}
+<div class="rounded-xl border border-amber-300 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 mb-4 text-sm text-amber-800 dark:text-amber-200">
+  &#128176; <b>Funding note:</b> {{ u.funding_note }}
+</div>
+{% endif %}
+
+<div class="grid lg:grid-cols-3 gap-4">
+
+  <div class="lg:col-span-2 space-y-4">
+
+    {% call card("Professors", "ranked by fit recommendation") %}
+      {% if u.professors %}
+        <div class="overflow-x-auto -m-4">
+          <table class="w-full text-sm min-w-[44rem]">
+            <thead>
+              <tr class="text-left text-xs text-muted uppercase tracking-wide border-b border-line bg-surface2/50">
+                <th class="px-4 py-2">Name</th>
+                <th class="px-4 py-2">PhD</th>
+                <th class="px-4 py-2">Score</th>
+                <th class="px-4 py-2 hidden md:table-cell">Masters</th>
+                <th class="px-4 py-2 hidden md:table-cell">Score</th>
+                <th class="px-4 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in u.professors %}
+              <tr class="border-b border-line hover:bg-surface2/50">
+                <td class="px-4 py-2">
+                  <a href="/professor/{{ p.id }}" class="font-medium hover:text-accent">{{ p.professor }}</a>
+                  {% if p.email %}<a href="mailto:{{ p.email }}" class="text-xs text-muted hover:text-accent ml-1">&#9993;</a>{% endif %}
+                </td>
+                <td class="px-4 py-2">{{ rec_badge(p.phd_recommendation) }}</td>
+                <td class="px-4 py-2">{{ score_chip(p.final_score_phd) }}</td>
+                <td class="px-4 py-2 hidden md:table-cell">{{ rec_badge(p.masters_recommendation) }}</td>
+                <td class="px-4 py-2 hidden md:table-cell">{{ score_chip(p.final_score_masters) }}</td>
+                <td class="px-4 py-2">{{ status_badge(p.status) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {{ empty_state("No professors recorded at this university") }}
+      {% endif %}
+    {% endcall %}
+
+    {% call card("Programs", u.programs|length ~ " program record(s)") %}
+      {% if u.programs %}
+      <div class="-m-4">
+        {% set FC_COLORS = {
+          'confirmed': 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
+          'likely': 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300',
+          'uncertain': 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+          'N/A': 'bg-surface2 text-muted',
+        } %}
+        {% for prog in u.programs %}
+        <div class="border-b border-line last:border-b-0" x-data="{ open: false }">
+          <button type="button" @click="open = !open"
+                  class="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-surface2/50 transition-colors">
+            <span class="font-medium capitalize shrink-0 w-24">{{ prog.track or '&mdash;'|safe }}</span>
+            <span class="text-sm text-muted truncate flex-1">{{ prog.program_name or '&mdash;'|safe }}</span>
+            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap
+                         {{ FC_COLORS.get(prog.funding_confidence, 'bg-surface2 text-muted') }}">
+              {{ prog.funding_confidence or '?' }}
+            </span>
+            <span class="text-muted text-xs transition-transform shrink-0"
+                  :class="open &amp;&amp; 'rotate-90'">&#9656;</span>
+          </button>
+          <div x-show="open" x-cloak class="px-4 pb-3 pt-1 space-y-2.5 bg-surface2/30 text-sm">
+            {% if prog.tuition_info %}
+            <p><span class="text-xs uppercase tracking-wide text-muted block">Tuition</span>{{ prog.tuition_info }}</p>
+            {% endif %}
+            {% if prog.funding_info %}
+            <p><span class="text-xs uppercase tracking-wide text-muted block">Funding</span>{{ prog.funding_info }}</p>
+            {% endif %}
+            {% if prog.visa_notes %}
+            <p><span class="text-xs uppercase tracking-wide text-muted block">&#128675; Visa notes</span>{{ prog.visa_notes }}</p>
+            {% endif %}
+            {% if prog.admission_requirements %}
+            <p><span class="text-xs uppercase tracking-wide text-muted block">Admission</span>{{ prog.admission_requirements }}</p>
+            {% endif %}
+            {% if prog.application_components %}
+            <p><span class="text-xs uppercase tracking-wide text-muted block">Components</span>{{ prog.application_components }}</p>
+            {% endif %}
+            {% if prog.notable_faculty %}
+            <p><span class="text-xs uppercase tracking-wide text-muted block">Faculty matches</span>{{ prog.notable_faculty }}</p>
+            {% endif %}
+            {% if prog.notes %}
+            <p><span class="text-xs uppercase tracking-wide text-muted block">Notes</span>{{ prog.notes }}</p>
+            {% endif %}
+            {% if prog.research_date or prog.source_urls %}
+            <p class="text-xs text-muted">
+              {% if prog.research_date %}Researched {{ prog.research_date }}{% endif %}
+              {% if prog.source_urls %}{% for src in prog.source_urls.split('|') if src.strip() %}
+                &middot; <a href="{{ src.strip() }}" target="_blank" rel="noopener" class="text-accent hover:underline">source</a>
+              {% endfor %}{% endif %}
+            </p>
+            {% endif %}
+            {% if prog.uncited_claims and prog.uncited_claims.strip() %}
+            <p class="text-xs text-amber-600 dark:text-amber-400/90">&#9888; Unverified claims: {{ prog.uncited_claims }}</p>
+            {% endif %}
+            <p class="text-xs">{% if prog.department_url and not prog.department_url.startswith('https://www.google.com/search') %}
+               <a href="{{ prog.department_url }}" target="_blank" rel="noopener" class="text-accent hover:underline">Official page &rarr;</a>
+               {% else %}<span class="text-muted">Department URL pending first visit (see uncited flags)</span>{% endif %}
+            </p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+        {{ empty_state("No programs recorded") }}
+      {% endif %}
+    {% endcall %}
+  </div>
+
+  {% call card("Deadlines", "soonest first") %}
+    {% if u.deadlines %}
+      <ul class="space-y-2.5 -m-4 p-0 list-none">
+        {% for d in u.deadlines %}
+        {% set dd = d.deadline_date|days_until %}
+        <li class="flex items-center justify-between gap-2 text-sm">
+          <div class="min-w-0">
+            <span class="truncate block">{{ d.track|capitalize if d.track else 'Program' }} &middot; {{ d.deadline_type or 'deadline' }}</span>
+            <span class="text-xs text-muted tabular-nums">{{ d.deadline_date }}{% if d.cycle_label %} &middot; {{ d.cycle_label }}{% endif %}</span>
+          </div>
+          {% if dd is not none and dd >= 0 %}
+            <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap
+              {{ 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' if dd <= 7
+                 else 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' if dd <= 30
+                 else 'bg-surface2 text-muted' }}">{{ dd }}d</span>
+          {% elif dd is not none %}
+            <span class="shrink-0 text-xs text-muted line-through tabular-nums">{{ dd }}d</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {{ empty_state("No deadlines recorded") }}
+    {% endif %}
+  {% endcall %}
+</div>
+{% endblock %}

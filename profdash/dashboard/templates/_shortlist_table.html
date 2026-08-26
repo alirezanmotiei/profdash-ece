@@ -1,0 +1,54 @@
+{% from "_macros.html" import rec_badge, score_chip, empty_state with context %}
+<div class="overflow-x-auto border border-line rounded-xl bg-surface shadow-sm">
+  <table class="w-full text-sm min-w-[60rem]">
+    <thead>
+      <tr class="text-left text-xs text-muted uppercase tracking-wide border-b border-line bg-surface2/50">
+        <th class="px-4 py-2">#</th>
+        <th class="px-4 py-2">Professor</th>
+        <th class="px-4 py-2">University</th>
+        <th class="px-4 py-2">PhD</th>
+        <th class="px-4 py-2">MS</th>
+        <th class="px-4 py-2 hidden lg:table-cell whitespace-nowrap">CS Rank</th>
+        <th class="px-4 py-2 hidden md:table-cell">Email</th>
+        <th class="px-4 py-2 text-right">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in rows %}
+      <tr class="border-b border-line hover:bg-surface2/50">
+        <td class="px-4 py-2 text-muted tabular-nums">{{ loop.index }}</td>
+        <td class="px-4 py-2">
+          <a href="/professor/{{ p.id }}" class="font-medium hover:text-accent">{{ p.professor }}</a>
+          <div class="flex items-center gap-1 mt-1">
+            {{ score_chip(p.final_score_phd) }}
+            {{ score_chip(p.final_score_masters) }}
+          </div>
+        </td>
+        <td class="px-4 py-2 text-muted max-w-[14rem]">
+          <span class="truncate block">{{ p.university }}</span>
+          <span class="text-xs">{{ p.location_country or '' }}</span>
+        </td>
+        <td class="px-4 py-2">{{ rec_badge(p.phd_recommendation) }}</td>
+        <td class="px-4 py-2">{{ rec_badge(p.masters_recommendation) }}</td>
+        <td class="px-4 py-2 tabular-nums hidden lg:table-cell">{{ p.csrankings_rank or '—' }}</td>
+        <td class="px-4 py-2 hidden md:table-cell">
+          {% if p.email %}<a href="mailto:{{ p.email }}" class="text-xs text-accent hover:underline">&#9993;</a>{% else %}&mdash;{% endif %}
+        </td>
+        <td class="px-4 py-2 text-right">
+          <form hx-post="/professor/{{ p.id }}/mark-contacted" hx-target="#shortlist-region" hx-swap="outerHTML"
+                hx-confirm="Mark {{ p.professor }} as contacted?"
+                class="inline">
+            <input type="hidden" name="track" value="{{ track }}">
+            <input type="hidden" name="min_score" value="{{ min_score }}">
+            <button type="submit"
+                    class="h-7 px-2.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-500 transition-colors whitespace-nowrap">
+              Mark contacted
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not rows %}{{ empty_state("Shortlist empty at this threshold", "Lower the minimum score or switch track") }}{% endif %}
+</div>

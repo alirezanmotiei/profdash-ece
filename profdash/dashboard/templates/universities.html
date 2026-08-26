@@ -1,0 +1,12 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header with context %}
+
+{% block title %}Universities — profdash{% endblock %}
+
+{% block content %}
+{{ page_header("Universities", groups|length ~ " institution(s)") }}
+
+<form method="get" action="/universities" id="uni-filter-form" class="contents">
+  {% include "_universities_grid.html" %}
+</form>
+{% endblock %}

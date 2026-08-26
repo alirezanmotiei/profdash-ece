@@ -1,0 +1,12 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header with context %}
+
+{% block title %}Deadlines — profdash{% endblock %}
+
+{% block content %}
+{{ page_header("Deadlines", total ~ " matching program deadline(s)") }}
+
+<form method="get" action="/deadlines" id="deadline-filter-form" class="contents">
+  {% include "_deadlines_table.html" %}
+</form>
+{% endblock %}

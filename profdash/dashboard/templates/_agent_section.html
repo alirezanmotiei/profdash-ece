@@ -1,0 +1,48 @@
+{% from "_macros.html" import card with context %}
+{% set latest = {} %}
+{% for t in tasks %}
+  {% if t.task_type not in latest or (t.requested_at > latest[t.task_type].requested_at) %}
+    {% set _ = latest.update({t.task_type: t}) %}
+  {% endif %}
+{% endfor %}
+<div id="agent-section">
+  {% call card("Agent Actions", "queued via cron worker") %}
+    <div class="grid grid-cols-2 gap-2">
+      {% for tt, label, icon in [('fetch_papers', 'Fetch papers', '&#128218;'), ('draft_email', 'Draft email', '&#9997;')] %}
+        {% set lt = latest.get(tt) %}
+        {% set busy = lt and lt.status in ('pending', 'in_progress') %}
+        <button {{ 'disabled' if busy }}
+                hx-post="/professor/{{ p.id }}/task/{{ tt }}" hx-target="#agent-section" hx-swap="outerHTML"
+                class="flex flex-col items-center gap-1 py-3 rounded-lg border border-line bg-surface
+                       {{ 'opacity-60 cursor-not-allowed' if busy else 'hover:border-accent/60 hover:bg-surface2' }}
+                       transition-colors text-xs font-medium">
+          <span class="text-xl">{{ icon|safe }}</span>
+          {{ 'Queued&hellip;'|safe if busy else label }}
+        </button>
+      {% endfor %}
+    </div>
+
+    {% if tasks %}
+    <div class="mt-4 border-t border-line pt-3">
+      <h3 class="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Recent tasks</h3>
+      <ul class="space-y-1.5">
+        {% for t in tasks[:5] %}
+        <li class="flex items-center justify-between gap-2 text-xs">
+          <span>{{ 'Fetch papers' if t.task_type == 'fetch_papers' else 'Draft email' }}</span>
+          <span class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1
+              {{ 'text-green-600 dark:text-green-400' if t.status == 'done'
+                 else 'text-red-600 dark:text-red-400' if t.status == 'failed'
+                 else 'text-blue-600 dark:text-blue-400' if t.status == 'in_progress'
+                 else 'text-muted' }}">
+              <span class="w-1.5 h-1.5 rounded-full bg-current"></span>{{ t.status }}
+            </span>
+            <span class="text-muted tabular-nums">{{ t.requested_at|localtz }}</span>
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  {% endcall %}
+</div>

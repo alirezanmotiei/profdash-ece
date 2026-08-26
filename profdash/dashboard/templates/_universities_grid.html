@@ -1,0 +1,50 @@
+{% from "_macros.html" import page_header, card, empty_state with context %}
+{% set sel_classes = 'h-8 px-2 rounded-lg bg-surface border border-line text-xs max-w-[12rem]
+                      hover:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/40' %}
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <input type="search" name="search" value="{{ search }}" placeholder="Search universities&hellip;" autocomplete="off"
+         class="w-full sm:w-56 h-9 px-3 rounded-lg bg-surface border border-line text-sm placeholder-muted
+                focus:outline-none focus:ring-2 focus:ring-accent/50">
+  <select name="location_country" class="{{ sel_classes }}">
+    <option value="">All countries</option>
+    {% for v in options.get('location_country', []) %}
+      <option value="{{ v }}" {{ 'selected' if filters.get('location_country') == v }}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <select name="fit_tier" class="{{ sel_classes }}">
+    <option value="">All tiers</option>
+    {% for v in options.get('fit_tier', []) %}
+      <option value="{{ v }}" {{ 'selected' if filters.get('fit_tier') == v }}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <select name="phd_recommendation" class="{{ sel_classes }}">
+    <option value="">PhD: all</option>
+    {% for v in options.get('phd_recommendation', []) %}
+      <option value="{{ v }}" {{ 'selected' if filters.get('phd_recommendation') == v }}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="h-8 px-3 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent/90">Apply</button>
+  {% if search or filters %}<a href="/universities" class="text-xs text-muted hover:text-ink underline underline-offset-2">Clear</a>{% endif %}
+</div>
+
+{% if groups %}
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+  {% for g in groups %}
+  <a href="/university/{{ g.normalized_name|urlencode }}"
+     class="block bg-surface border border-line rounded-xl p-4 shadow-sm hover:border-accent/50 transition-colors">
+    <div class="font-medium truncate" title="{{ g.display_name }}">{{ g.display_name }}</div>
+    <div class="text-xs text-muted mt-0.5">{{ g.country or 'Unknown country' }}</div>
+    <div class="flex items-center justify-between mt-3 text-xs">
+      <span><b>{{ g.total_professors }}</b> <span class="text-muted">professors</span></span>
+      <span class="text-muted"><b class="text-ink">{{ g.contacted_count }}</b> contacted</span>
+    </div>
+    <div class="h-1.5 mt-2 rounded-full bg-surface2 overflow-hidden">
+      <div class="h-full rounded-full bg-accent/70"
+           style="width: {{ (100 * g.contacted_count / g.total_professors)|round(1) if g.total_professors else 0 }}%"></div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="bg-surface border border-line rounded-xl shadow-sm">{{ empty_state("No universities match") }}</div>
+{% endif %}

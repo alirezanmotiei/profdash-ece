@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "profdash"
+version = "0.1.0"
+description = "Self-hosted professor outreach tracker for prospective CS grad students: CSRankings import, AI-assisted scoring, Gmail reply scanning, and a fast local dashboard."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Soroush Sahraei" }]
+requires-python = ">=3.11"
+keywords = ["phd", "grad-school", "outreach", "csrankings", "dblp", "academic"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+]
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+gmail = [
+    "google-api-python-client>=2.100",
+    "google-auth>=2.23",
+]
+dev = ["pytest>=8"]
+
+[project.scripts]
+prof = "profdash.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["profdash*"]
+
+[tool.setuptools.package-data]
+profdash = ["dashboard/templates/*.html", "dashboard/static/vendor/*", "presets/*.toml", "profiles/*.toml", "prompts/*.md"]

@@ -1,0 +1,56 @@
+{% from "_macros.html" import empty_state with context %}
+<div class="overflow-x-auto border border-line rounded-xl bg-surface shadow-sm">
+  <table class="w-full text-sm min-w-[64rem]">
+    <thead>
+      <tr class="text-left text-xs text-muted uppercase tracking-wide border-b border-line bg-surface2/50">
+        <th class="px-2 sm:px-3 py-2 w-8">
+          <input type="checkbox" aria-label="Select all on page"
+                 class="rounded border-line text-accent focus:ring-accent/50"
+                 :checked="$store.bulk.allOnPage"
+                 @change="$store.bulk.togglePage(JSON.parse($el.closest('table').querySelector('tbody').dataset.pageIds), $event.target.checked)">
+        </th>
+        {% for col in ['professor','university','location_country','fit_tier','phd_recommendation','final_score_phd','masters_recommendation','final_score_masters','status'] %}
+        {% set ndir = 'desc' if (params.sort == col and params.direction == 'asc') else 'asc' %}
+        <th class="px-3 py-2 whitespace-nowrap select-none">
+          <a href="/professors?{{ qs(sort=col, direction=ndir, page=1) }}"
+             hx-get="/table-rows?{{ qs(sort=col, direction=ndir, page=1) }}"
+             hx-target="#table-region" hx-swap="outerHTML"
+             hx-push-url="{{ '/professors?' ~ qs(sort=col, direction=ndir, page=1) }}"
+             class="inline-flex items-center gap-1 hover:text-ink {{ 'text-accent font-semibold' if params.sort == col }}">
+            {{ COLUMN_LABELS.get(col, col|title) }}
+            {% if params.sort == col %}<span>{{ '&darr;' if ndir == 'asc' else '&uarr;' }}</span>{% endif %}
+          </a>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody data-page-ids='{{ rows|map(attribute="id")|list|tojson }}'>
+      {% for r in rows %}
+        {% include "_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not rows %}{{ empty_state("No professors match your filters", "Try clearing the search or filters") }}{% endif %}
+</div>
+
+<div class="flex items-center justify-between mt-3 text-sm">
+  <span class="text-muted">{{ total }} result{{ 's' if total != 1 }} &middot; page {{ params.page }} of {{ pages }}</span>
+  <div class="flex items-center gap-1">
+    {% set prev_qs = qs(page=params.page - 1) if params.page > 1 else none %}
+    {% set next_qs = qs(page=params.page + 1) if params.page < pages else none %}
+    {% if prev_qs %}
+      <a href="/professors?{{ prev_qs }}" hx-get="/table-rows?{{ prev_qs }}" hx-target="#table-region"
+         hx-swap="outerHTML" hx-push-url="/professors?{{ prev_qs }}"
+         class="px-3 py-1.5 rounded-lg border border-line hover:bg-surface2">&larr; Prev</a>
+    {% else %}
+      <span class="px-3 py-1.5 rounded-lg border border-line opacity-40 cursor-not-allowed">&larr; Prev</span>
+    {% endif %}
+    {% if next_qs %}
+      <a href="/professors?{{ next_qs }}" hx-get="/table-rows?{{ next_qs }}" hx-target="#table-region"
+         hx-swap="outerHTML" hx-push-url="/professors?{{ next_qs }}"
+         class="px-3 py-1.5 rounded-lg border border-line hover:bg-surface2">Next &rarr;</a>
+    {% else %}
+      <span class="px-3 py-1.5 rounded-lg border border-line opacity-40 cursor-not-allowed">Next &rarr;</span>
+    {% endif %}
+  </div>
+</div>

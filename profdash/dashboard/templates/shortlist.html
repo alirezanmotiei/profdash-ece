@@ -1,0 +1,28 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header with context %}
+
+{% block title %}Shortlist — profdash{% endblock %}
+
+{% block content %}
+{{ page_header("Shortlist", rows|length ~ " high-fit professor(s) not yet contacted") }}
+
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  {% for t, label in [('both', 'Both tracks'), ('phd', 'PhD'), ('masters', 'Masters')] %}
+    <a href="/shortlist?track={{ t }}&amp;min_score={{ min_score }}"
+       class="px-3 h-7 inline-flex items-center rounded-full border text-xs font-medium transition-colors
+              {{ 'bg-accent/10 border-accent/40 text-accent' if track == t
+                 else 'border-line text-muted hover:text-ink hover:bg-surface2' }}">{{ label }}</a>
+  {% endfor %}
+  <span class="text-muted text-sm ml-2">min score</span>
+  {% for ms in [6, 7, 8] %}
+    <a href="/shortlist?track={{ track }}&amp;min_score={{ ms }}"
+       class="w-7 h-7 inline-flex items-center justify-center rounded-full border text-xs font-medium transition-colors
+              {{ 'bg-accent/10 border-accent/40 text-accent' if min_score == ms
+                 else 'border-line text-muted hover:text-ink hover:bg-surface2' }}">{{ ms }}</a>
+  {% endfor %}
+</div>
+
+<div id="shortlist-region">
+  {% include "_shortlist_table.html" %}
+</div>
+{% endblock %}

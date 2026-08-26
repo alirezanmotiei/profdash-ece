@@ -1,0 +1,170 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header, empty_state, status_badge with context %}
+
+{% block title %}Professors — profdash{% endblock %}
+
+{% block content %}
+
+<div id="stats-bar" class="mb-4">
+  {% include "_stats_bar.html" %}
+</div>
+
+<form id="filter-form" @submit.prevent class="flex flex-wrap items-center gap-2 mb-4"
+      hx-get="/table-rows" hx-target="#table-region" hx-swap="outerHTML">
+
+  <div class="relative" hx-disinherit="*" x-data="hiddenPopover"
+       data-initial='{{ get_hidden_countries()|tojson }}'>
+    <button type="button" @click="hopen = !hopen"
+            class="h-9 px-2.5 rounded-lg border text-sm transition-colors
+                   {{ 'border-accent/50 bg-accent/10 text-accent font-medium' if get_hidden_countries()
+                      else 'border-line text-muted hover:border-accent/60 hover:text-ink' }}">
+      Hidden: {{ get_hidden_countries()|length if get_hidden_countries() else 'off' }}
+    </button>
+    <div x-show="hopen" x-cloak @click.outside="hopen = false"
+         class="absolute left-0 top-full mt-1 z-30 w-64 max-h-80 overflow-y-auto
+                bg-surface border border-line rounded-xl shadow-xl p-3 space-y-1">
+      <p class="text-xs text-muted mb-2">Countries to hide everywhere:</p>
+      {% for c in options.get('location_country', []) %}
+        <label class="flex items-center gap-2 text-sm px-1.5 py-1 rounded-md hover:bg-surface2 cursor-pointer">
+          <input type="checkbox" value="{{ c }}" class="rounded border-line text-accent focus:ring-accent/50"
+                 :checked="sel.includes('{{ c }}')"
+                 @change="$event.target.checked ? sel.push('{{ c }}') : sel = sel.filter(x => x !== '{{ c }}')">
+          {{ c }}
+        </label>
+      {% endfor %}
+      <div class="flex gap-2 pt-2 mt-2 border-t border-line">
+        <button type="button" @click="save()"
+                class="flex-1 h-8 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent/90">Apply</button>
+        <button type="button" @click="sel = []; save()"
+                class="h-8 px-3 rounded-lg border border-line text-xs hover:bg-surface2">Show all</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="search" name="search" value="{{ params.search }}" placeholder="Search name or university&hellip;" autocomplete="off"
+         class="w-full sm:w-56 h-9 px-3 rounded-lg bg-surface border border-line text-sm placeholder-muted
+                focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent"
+         hx-trigger="input changed delay:300ms, search" hx-replace-url="{{ '/professors?' ~ qs(page=params.page) }}">
+
+  {% set sel_defs = [
+    ('status', 'All statuses', options.get('status', []), 'status'),
+    ('stage', 'Stage: all', options.get('stage', []), 'stage'),
+    ('fit_tier', 'All tiers', options.get('fit_tier', []), none),
+    ('phd_recommendation', 'PhD: all', options.get('phd_recommendation', []), none),
+    ('masters_recommendation', 'Masters: all', options.get('masters_recommendation', []), none),
+    ('location_country', 'All countries', options.get('location_country', []), none),
+  ] %}
+  {% set sel_classes = 'h-9 px-2 rounded-lg bg-surface border border-line text-sm max-w-[13rem]
+                        hover:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/40' %}
+  {% set sel_attrs = 'hx-trigger="change" hx-include="closest form" hx-push-url="' ~ ('/professors?' ~ qs(page=params.page)) ~ '"' %}
+  {% for name, label, values, label_map in sel_defs %}
+    <select name="{{ name }}" aria-label="{{ label }}" class="{{ sel_classes }}" {{ sel_attrs|safe }}>
+      <option value="">{{ label }}</option>
+      {% for v in values %}
+        <option value="{{ v }}" {{ 'selected' if params.filters.get(name) == v }}>
+          {{ STATUS_LABELS.get(v, v) if label_map == 'status' else STAGE_LABELS.get(v, v) if label_map == 'stage' else v }}
+        </option>
+      {% endfor %}
+    </select>
+  {% endfor %}
+
+  <select name="university" aria-label="All universities" class="{{ sel_classes }} w-48" {{ sel_attrs|safe }}>
+    <option value="">All universities</option>
+    {% for v in options.get('university', []) %}
+      <option value="{{ v }}" {{ 'selected' if params.filters.get('university') == v }}>{{ v }}</option>
+    {% endfor %}
+  </select>
+
+  {% if params.search or params.filters %}
+    <a href="/professors" class="text-sm text-muted hover:text-ink underline underline-offset-2">Clear</a>
+  {% endif %}
+
+  <button type="button"
+          class="h-9 px-4 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
+          hx-include="closest form">
+    Apply
+  </button>
+</form>
+
+<div id="table-region"
+     hx-get="/table-rows?{{ qs(page=params.page) }}"
+     hx-trigger="refresh-table from:body" hx-swap="outerHTML">
+  {% include "_table_content.html" %}
+</div>
+
+<div x-data="{ status: '', applying: false,
+               async apply() {
+                 if (!this.status || this.applying) return;
+                 this.applying = true;
+                 try {
+                   const ids = Alpine.store('bulk').ids;
+                   await fetch('/bulk-status', { method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ ids, status: this.status }) });
+                   Alpine.store('bulk').clear();
+                   this.status = '';
+                   htmx.trigger(document.body, 'refresh-table');
+                 } finally { this.applying = false; }
+               } }"
+     x-show="$store.bulk.ids.length > 0" x-transition.opacity x-cloak
+     class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3
+            bg-surface border border-line shadow-xl rounded-xl px-4 py-3">
+  <span class="text-sm whitespace-nowrap">
+    <b class="text-accent tabular-nums" x-text="$store.bulk.ids.length"></b> selected
+  </span>
+  <select x-model="status" aria-label="Bulk status"
+          class="h-8 px-2 rounded-lg bg-surface border border-line text-xs
+                 focus:outline-none focus:ring-2 focus:ring-accent/40">
+    <option value="">Set status&hellip;</option>
+    {% for s in STATUS_TAXONOMY %}
+      <option value="{{ s }}">{{ STATUS_LABELS.get(s, s) }}</option>
+    {% endfor %}
+  </select>
+  <button @click="apply()" :disabled="applying || !status"
+          class="h-8 px-3 rounded-lg bg-accent text-white text-xs font-medium
+                 disabled:opacity-40 enabled:hover:bg-accent/90 transition-colors">
+    <span x-show="!applying">Apply</span>
+    <span x-show="applying" x-cloak>Saving&hellip;</span>
+  </button>
+  <button @click="$store.bulk.clear()"
+          class="text-muted hover:text-ink text-xs underline underline-offset-2">clear</button>
+</div>
+
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('hiddenPopover', () => ({
+      hopen: false,
+      sel: [],
+      init() {
+        try { this.sel = JSON.parse(this.$el.dataset.initial || '[]'); }
+        catch (e) { this.sel = []; }
+      },
+      async save() {
+        await fetch('/settings/hidden-countries', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ countries: this.sel }) });
+        location.reload();
+      },
+    }));
+
+    Alpine.store('bulk', {
+      ids: [],
+      allOnPage: false,
+      toggle(id) {
+        const i = this.ids.indexOf(id);
+        i >= 0 ? this.ids.splice(i, 1) : this.ids.push(id);
+        this.allOnPage = false;
+      },
+      togglePage(pageIds, checked) {
+        for (const id of pageIds) {
+          const i = this.ids.indexOf(id);
+          if (checked && i < 0) this.ids.push(id);
+          if (!checked && i >= 0) this.ids.splice(i, 1);
+        }
+        this.allOnPage = checked;
+      },
+      clear() { this.ids = []; this.allOnPage = false; },
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,8 @@
+<div id="table-region"
+     hx-get="/table-rows?{{ qs(page=params.page) }}"
+     hx-trigger="refresh-table from:body" hx-swap="outerHTML">
+  {% include "_table_content.html" %}
+</div>
+<div id="stats-bar" class="mb-3" hx-swap-oob="true">
+  {% include "_stats_bar.html" %}
+</div>

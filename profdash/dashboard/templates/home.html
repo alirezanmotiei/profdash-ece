@@ -1,0 +1,175 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header, stat_tile, card, status_badge, rec_badge, empty_state with context %}
+
+{% block title %}Mission Control — profdash{% endblock %}
+
+{% block content %}
+{{ page_header("Mission Control", "Pipeline overview · " ~ today) }}
+
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+  {{ stat_tile("Professors", stats.total, stats.stage_breakdown.get('deep_reviewed', 0) ~ " deep reviewed", "/professors") }}
+  {{ stat_tile("Must Apply", stats.phd_rec_breakdown.get('MUST APPLY', 0), "PhD track", "/shortlist") }}
+  {{ stat_tile("Deadlines ≤14d", stats.upcoming_deadlines_14d, "next two weeks", "/deadlines") }}
+  {{ stat_tile("Follow-ups", stats.followups_needed, "waiting >21 days", "/follow-ups") }}
+  {{ stat_tile("Confirmations", confirmations_total, "gmail suggestions", "/confirmations") }}
+  {{ stat_tile("New Positions", stats.positions_new, "unreviewed", "/positions") }}
+</div>
+
+<h2 class="text-xs font-semibold text-muted uppercase tracking-wider mt-8 mb-3">Action queues</h2>
+<div class="grid lg:grid-cols-2 gap-4">
+
+  {% call card("Pending Confirmations", confirmations_total ~ " waiting for review") %}
+    {% if confirmations %}
+      <ul class="divide-y divide-line -m-4">
+        {% for c in confirmations %}
+        <li class="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-surface2/60">
+          <div class="min-w-0">
+            <a href="/professor/{{ c.professor_id }}" class="text-sm font-medium hover:text-accent truncate block">{{ c.professor }}</a>
+            <span class="text-xs text-muted truncate block">{{ c.university }}</span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            {{ status_badge(c.status) }}
+            <span class="text-xs text-muted whitespace-nowrap">{{ c.at|localtz }}</span>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      <a href="/confirmations" class="inline-block mt-3 text-sm text-accent hover:underline">View all {{ confirmations_total }} &rarr;</a>
+    {% else %}
+      {{ empty_state("No pending confirmations", "Gmail-detected replies will appear here") }}
+    {% endif %}
+  {% endcall %}
+
+  {% call card("Overdue Follow-ups", "contacted &gt;21 days ago, still no reply") %}
+    {% if followups %}
+      <ul class="divide-y divide-line -m-4">
+        {% for f in followups %}
+        <li class="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-surface2/60">
+          <div class="min-w-0">
+            <a href="/professor/{{ f.id }}" class="text-sm font-medium hover:text-accent truncate block">{{ f.professor }}</a>
+            <span class="text-xs text-muted truncate block">{{ f.university }}</span>
+          </div>
+          <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
+            {{ f.days_waiting if f.days_waiting is not none else '?' }}d waiting
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+      <a href="/follow-ups" class="inline-block mt-3 text-sm text-accent hover:underline">View all {{ followups_total }} &rarr;</a>
+    {% else %}
+      {{ empty_state("Nothing overdue", "Check back after the next outreach batch") }}
+    {% endif %}
+  {% endcall %}
+
+  {% call card("Application Deadlines", "opens & closes only · soonest first") %}
+    {% if deadlines %}
+      <ul class="divide-y divide-line -m-4">
+        {% for d in deadlines %}
+        {% set dd = d.deadline_date|days_until %}
+        {% set is_open_type = d.deadline_type in APP_OPEN_TYPES %}
+        <li class="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-surface2/60">
+          <div class="min-w-0">
+            <a href="/university/{{ d.university|lower }}" class="text-sm font-medium hover:text-accent truncate block">{{ d.university }}</a>
+            <span class="text-xs text-muted truncate block">{{ d.track }} &middot; {{ d.program_name or 'program' }}</span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide
+              {{ 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' if is_open_type
+                 else 'bg-surface2 text-muted' }}">
+              {{ 'opens' if is_open_type else 'closes' }}
+            </span>
+            <span class="text-xs text-muted whitespace-nowrap">{{ d.deadline_date }}</span>
+            {% if dd is not none and not is_open_type %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap
+                {{ ('bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' if dd <= 7
+                    else 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300') if dd <= 30
+                    else 'bg-surface2 text-muted' }}">
+                {{ dd }}d
+              </span>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      <a href="/deadlines" class="inline-block mt-3 text-sm text-accent hover:underline">All deadlines &rarr;</a>
+    {% else %}
+      {{ empty_state("No upcoming application dates recorded") }}
+    {% endif %}
+  {% endcall %}
+
+  {% call card("Open Applications", "accepting applications right now") %}
+    {% if open_apps %}
+      <ul class="divide-y divide-line -m-4">
+        {% for o in open_apps %}
+        <li class="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-surface2/60">
+          <div class="min-w-0">
+            <a href="/university/{{ o.university|lower }}" class="text-sm font-medium hover:text-accent truncate block">{{ o.university }}</a>
+            <span class="text-xs text-muted truncate block">{{ o.track }} &middot; {{ o.program_name or 'program' }}</span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">
+              <span class="w-1.5 h-1.5 rounded-full bg-current"></span>open
+            </span>
+            <span class="text-xs text-muted whitespace-nowrap tabular-nums">closes {{ o.closes_on }}</span>
+            {% if o.days_left is not none %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap
+                {{ ('bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' if o.days_left <= 7
+                    else 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300') if o.days_left <= 30
+                    else 'bg-surface2 text-muted' }}">
+                {{ o.days_left }}d
+              </span>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {{ empty_state("No programs currently open", "Closing dates land here once windows start") }}
+    {% endif %}
+  {% endcall %}
+
+  {% call card("Recent Agent Activity", tasks|length ~ " recent tasks") %}
+    {% if tasks %}
+      <ul class="divide-y divide-line -m-4">
+        {% for t in tasks %}
+        <li class="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-surface2/60">
+          <div class="min-w-0">
+            <a href="/professor/{{ t.professor_id }}" class="text-sm font-medium hover:text-accent truncate block">
+              {{ 'Fetch papers' if t.task_type == 'fetch_papers' else 'Draft email' }}
+            </a>
+            <span class="text-xs text-muted font-mono truncate block">{{ t.professor_id }}</span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="inline-flex items-center gap-1 text-xs
+              {{ 'text-green-600 dark:text-green-400' if t.status == 'done'
+                 else 'text-red-600 dark:text-red-400' if t.status == 'failed'
+                 else 'text-blue-600 dark:text-blue-400' if t.status == 'in_progress'
+                 else 'text-muted' }}">
+              <span class="w-1.5 h-1.5 rounded-full bg-current"></span>{{ t.status }}
+            </span>
+            <span class="text-xs text-muted whitespace-nowrap">{{ t.requested_at|localtz }}</span>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      <a href="/activity" class="inline-block mt-3 text-sm text-accent hover:underline">Full activity feed &rarr;</a>
+    {% else %}
+      {{ empty_state("No agent tasks yet") }}
+    {% endif %}
+  {% endcall %}
+
+</div>
+
+{% if positions_new %}
+<h2 class="text-xs font-semibold text-muted uppercase tracking-wider mt-8 mb-3">New positions</h2>
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+  {% for p in positions_new %}
+  <a href="/positions" class="block bg-surface border border-line rounded-xl p-3 shadow-sm hover:border-accent/50 transition-colors">
+    <div class="text-sm font-medium line-clamp-2">{{ p.title or '(untitled)' }}</div>
+    <div class="text-xs text-muted mt-1 truncate">{{ p.institution }}{% if p.track %} &middot; {{ p.track }}{% endif %}</div>
+    <div class="mt-2">{{ rec_badge(p.recommendation) }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

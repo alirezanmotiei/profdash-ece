@@ -1,0 +1,68 @@
+{% from "_macros.html" import status_badge, empty_state with context %}
+<div id="confirmations-list" class="space-y-3">
+  {% for c in items %}
+    <div class="bg-surface border border-line rounded-xl shadow-sm p-4" x-data="{ editing: false }">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <a href="/professor/{{ c.professor_id }}" class="font-medium hover:text-accent">{{ c.professor }}</a>
+            <span class="text-xs text-muted">{{ c.university }}</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-1.5 text-sm">
+            {{ status_badge(c.current_status) }}
+            <span class="text-muted">&rarr;</span>
+            {{ status_badge(c.status) }}
+            {% if c.email %}<a href="mailto:{{ c.email }}" class="text-xs text-muted hover:text-accent">&#9993; {{ c.email }}</a>{% endif %}
+          </div>
+          {% if c.note %}<p class="text-sm text-muted mt-2 italic">&ldquo;{{ c.note }}&rdquo;</p>{% endif %}
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="text-xs text-muted tabular-nums mr-1 hidden sm:inline">{{ c.at|localtz }}</span>
+          <button hx-post="/confirmations/{{ c.id }}/confirm" hx-target="#confirmations-list" hx-swap="outerHTML"
+                  hx-confirm="Set {{ c.professor }} to &ldquo;{{ STATUS_LABELS.get(c.status, c.status) }}&rdquo;?"
+                  class="h-8 px-3 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-500 transition-colors">
+            Confirm
+          </button>
+          <button @click="editing = !editing"
+                  class="h-8 px-3 rounded-lg border border-line text-xs font-medium hover:bg-surface2 transition-colors">
+            Edit
+          </button>
+          <button hx-post="/confirmations/{{ c.id }}/reject" hx-target="#confirmations-list" hx-swap="outerHTML"
+                  hx-confirm="Reject this suggestion?"
+                  class="h-8 px-3 rounded-lg border border-line text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+            Reject
+          </button>
+        </div>
+      </div>
+
+      <form x-show="editing" x-cloak @submit.prevent
+            class="mt-4 pt-4 border-t border-line space-y-2"
+            hx-post="/confirmations/{{ c.id }}/edit" hx-target="#confirmations-list" hx-swap="outerHTML">
+        <div class="flex flex-wrap gap-2">
+          <select name="status" aria-label="Corrected status"
+                  class="h-9 px-2 rounded-lg bg-surface border border-line text-sm
+                         focus:outline-none focus:ring-2 focus:ring-accent/40">
+            {% for s in STATUS_TAXONOMY %}
+              <option value="{{ s }}" {{ 'selected' if c.status == s }}>{{ STATUS_LABELS.get(s, s) }}</option>
+            {% endfor %}
+          </select>
+          <input type="text" name="note" value="{{ c.note or '' }}" placeholder="Note (optional)"
+                 class="flex-1 min-w-[12rem] h-9 px-3 rounded-lg bg-surface border border-line text-sm
+                        focus:outline-none focus:ring-2 focus:ring-accent/40">
+        </div>
+        <div class="flex gap-2 justify-end">
+          <button type="button" @click="editing = false"
+                  class="h-8 px-3 rounded-lg border border-line text-xs hover:bg-surface2">Cancel</button>
+          <button type="submit"
+                  class="h-8 px-3 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors">
+            Save &amp; confirm
+          </button>
+        </div>
+      </form>
+    </div>
+  {% else %}
+    <div class="bg-surface border border-line rounded-xl shadow-sm">
+      {{ empty_state("Queue is clear", "Gmail-detected replies land here for review") }}
+    </div>
+  {% endfor %}
+</div>

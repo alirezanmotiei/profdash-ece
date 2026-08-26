@@ -1,0 +1,24 @@
+# Theory of computing venue tiers.
+# Used by `prof worker tasks` (paper relevance ranking) and `prof digest`
+# (scoring digests). Match is case-insensitive substring against DBLP
+# venue strings. Add your field's venues in your own profile instead of
+# editing this file.
+
+strong = [
+    "stoc", "focs", "soda", "icalp", "esa", "socg",
+    "sicomp", "jacm", "j. acm", "algorithmica",
+    "podc", "disc", "ec",
+    "proc. acm manag. data",
+]
+
+moderate = [
+    "itcs", "wine", "sosa", "approx", "approx/random", "random",
+    "latin", "swat", "wg", "cpm", "stacs", "mfcs", "isaac",
+    "spaa", "seq", "applied", "theoretices",
+    "aaai", "ijcai", "neurips", "icml",
+    "acm trans. algorithms", "siam j. comput",
+]
+
+lower = [
+    "combinatorica", "lncs", "lipics",
+]

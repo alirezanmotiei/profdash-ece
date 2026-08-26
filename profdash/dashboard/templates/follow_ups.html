@@ -1,0 +1,96 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header, card, empty_state with context %}
+
+{% block title %}Follow-ups — profdash{% endblock %}
+
+{% block content %}
+{{ page_header("Follow-ups", "Contacted professors awaiting replies") }}
+
+<div class="flex items-center gap-2 mb-4 text-sm">
+  <span class="text-muted">Overdue after</span>
+  {% for d in [14, 21, 30] %}
+    <a href="/follow-ups?days={{ d }}"
+       class="px-3 h-7 inline-flex items-center rounded-full border text-xs font-medium transition-colors
+              {{ 'bg-accent/10 border-accent/40 text-accent' if days == d
+                 else 'border-line text-muted hover:text-ink hover:bg-surface2' }}">{{ d }}d</a>
+  {% endfor %}
+</div>
+
+<div class="space-y-4">
+  {% call card("Overdue", overdue|length ~ " professor(s) waiting more than " ~ days ~ " days") %}
+    {% if overdue %}
+      <div class="overflow-x-auto -m-4">
+        <table class="w-full text-sm min-w-[48rem]">
+          <thead>
+            <tr class="text-left text-xs text-muted uppercase tracking-wide border-b border-line bg-surface2/50">
+              <th class="px-4 py-2">Professor</th>
+              <th class="px-4 py-2">University</th>
+              <th class="px-4 py-2 hidden md:table-cell">Email</th>
+              <th class="px-4 py-2 hidden lg:table-cell">Contacted</th>
+              <th class="px-4 py-2 text-right">Waiting</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in overdue %}
+            <tr class="border-b border-line hover:bg-surface2/50">
+              <td class="px-4 py-2"><a href="/professor/{{ p.id }}" class="font-medium hover:text-accent">{{ p.professor }}</a></td>
+              <td class="px-4 py-2 text-muted max-w-[16rem]"><span class="truncate block">{{ p.university }}</span></td>
+              <td class="px-4 py-2 hidden md:table-cell">
+                {% if p.email %}<a href="mailto:{{ p.email }}" class="text-xs text-accent hover:underline">{{ p.email }}</a>{% else %}<span class="text-muted">&mdash;</span>{% endif %}
+              </td>
+              <td class="px-4 py-2 hidden lg:table-cell text-xs text-muted tabular-nums whitespace-nowrap">{{ p.last_contacted_at|localtz }}</td>
+              <td class="px-4 py-2 text-right">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 tabular-nums">
+                  {{ p.days_waiting }}d
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {{ empty_state("Nothing overdue at the " ~ days ~ "-day threshold") }}
+    {% endif %}
+  {% endcall %}
+
+  {% call card("Recently contacted", waiting|length ~ " still inside the window (or no date recorded)") %}
+    {% if waiting %}
+      <div class="overflow-x-auto -m-4">
+        <table class="w-full text-sm min-w-[48rem]">
+          <thead>
+            <tr class="text-left text-xs text-muted uppercase tracking-wide border-b border-line bg-surface2/50">
+              <th class="px-4 py-2">Professor</th>
+              <th class="px-4 py-2">University</th>
+              <th class="px-4 py-2 hidden md:table-cell">Email</th>
+              <th class="px-4 py-2 hidden lg:table-cell">Contacted</th>
+              <th class="px-4 py-2 text-right">Waiting</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in waiting %}
+            <tr class="border-b border-line hover:bg-surface2/50">
+              <td class="px-4 py-2"><a href="/professor/{{ p.id }}" class="font-medium hover:text-accent">{{ p.professor }}</a></td>
+              <td class="px-4 py-2 text-muted max-w-[16rem]"><span class="truncate block">{{ p.university }}</span></td>
+              <td class="px-4 py-2 hidden md:table-cell">
+                {% if p.email %}<a href="mailto:{{ p.email }}" class="text-xs text-accent hover:underline">{{ p.email }}</a>{% else %}<span class="text-muted">&mdash;</span>{% endif %}
+              </td>
+              <td class="px-4 py-2 hidden lg:table-cell text-xs text-muted tabular-nums whitespace-nowrap">{{ p.last_contacted_at|localtz if p.last_contacted_at else 'unknown' }}</td>
+              <td class="px-4 py-2 text-right">
+                {% if p.days_waiting is not none %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface2 text-muted tabular-nums">{{ p.days_waiting }}d</span>
+                {% else %}
+                  <span class="text-xs text-muted">&mdash;</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {{ empty_state("No recently contacted professors") }}
+    {% endif %}
+  {% endcall %}
+</div>
+{% endblock %}

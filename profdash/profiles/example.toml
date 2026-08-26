@@ -1,0 +1,38 @@
+# profdash profile — copy to ./profile.toml (in the directory where you
+# run `prof init`) and fill in. Every field is optional; empty defaults
+# just mean "skip that feature".
+
+timezone = "UTC"            # e.g. "America/New_York", "Asia/Tehran", "Europe/Berlin"
+
+[identity]
+name = ""                   # your full name — used as the email signature
+email = ""                  # your address (informational)
+bio = """                   # first-person paragraph used in outreach drafts:
+"""                         # degree program, university, research area,
+                            # publications/achievements, what you're looking for.
+interests_short = ""        # short phrase, e.g. "machine learning systems"
+signature = ""
+
+# How the Gmail backfill recognizes mail that is NOT a professor
+# (your own addresses, university mailing lists, non-outreach subjects).
+[self_filter]
+domains = []                # e.g. ["myuni.edu"]
+name_tokens = []            # lowercase tokens that appear in YOUR addresses
+skip_subject_patterns = []  # regexes, e.g. 'homework|exam|tuition'
+
+[gmail]
+# Where your OAuth token JSON lives. Default: ~/.config/profdash/google_token.json
+token_path = ""
+
+# Venue tiers for paper relevance + scoring digests.
+# `preset` picks a built-in ("theory"); inline lists extend it.
+# You can also point preset at your own .toml file path.
+[venues]
+preset = ""
+strong = []
+moderate = []
+lower = []
+
+[outreach]
+follow_up_days = 21         # contacted-but-silent profs surface on /follow-ups after N days
+min_score_shortlist = 7     # default minimum score on /shortlist

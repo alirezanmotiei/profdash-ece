@@ -1,0 +1,90 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header, card, rec_badge, score_chip, status_badge, empty_state with context %}
+
+{% block title %}Search — profdash{% endblock %}
+
+{% block content %}
+<form method="get" action="/search" class="mb-6">
+  <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Search</h1>
+  <p class="text-sm text-muted mt-0.5">{% if q %}{{ n }} result(s) for &ldquo;{{ q }}&rdquo;{% else %}Across professors, universities, deadlines and positions{% endif %}</p>
+  <div class="flex gap-2 mt-4 max-w-xl">
+    <input type="search" name="q" value="{{ q }}" autofocus autocomplete="off"
+           placeholder="Type at least 2 characters&hellip;"
+           class="flex-1 h-10 px-3 rounded-lg bg-surface border border-line text-sm placeholder-muted
+                  focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent">
+    <button type="submit" class="h-10 px-4 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90">Search</button>
+  </div>
+</form>
+
+{% if q %}
+<div class="space-y-4">
+
+  {% if results.professors %}
+    {% call card("Professors", results.professors|length) %}
+      <ul class="divide-y divide-line -m-4">
+        {% for p in results.professors[:10] %}
+        <li class="px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 hover:bg-surface2/50">
+          <a href="/professor/{{ p.id }}" class="font-medium hover:text-accent">{{ p.professor }}</a>
+          <div class="flex items-center gap-2 text-xs text-muted">
+            <span>{{ p.university }}</span>{{ status_badge(p.status) }}{{ score_chip(p.final_score_phd) }}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    {% endcall %}
+  {% endif %}
+
+  {% if results.universities %}
+    {% call card("Universities", results.universities|length) %}
+      <ul class="divide-y divide-line -m-4">
+        {% for u in results.universities[:8] %}
+        <li class="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-surface2/50">
+          <a href="/university/{{ u.university|lower|urlencode }}" class="font-medium hover:text-accent">{{ u.university }}</a>
+          <span class="text-xs text-muted capitalize">{{ u.track or '' }} {{ '&middot; funding: '~u.funding_confidence if u.funding_confidence }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    {% endcall %}
+  {% endif %}
+
+  {% if results.deadlines %}
+    {% call card("Deadlines", results.deadlines|length) %}
+      <ul class="divide-y divide-line -m-4">
+        {% for d in results.deadlines[:8] %}
+        {% set dd = d.deadline_date|days_until %}
+        <li class="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-surface2/50">
+          <div>
+            <a href="/university/{{ d.university|lower|urlencode }}" class="font-medium hover:text-accent">{{ d.university }}</a>
+            <span class="text-xs text-muted ml-2">{{ d.track }} &middot; {{ d.deadline_type or 'deadline' }}</span>
+          </div>
+          <span class="text-xs text-muted tabular-nums whitespace-nowrap">{{ d.deadline_date }}{% if dd is not none and dd >= 0 %} ({{ dd }}d){% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    {% endcall %}
+  {% endif %}
+
+  {% if results.positions %}
+    {% call card("Positions", results.positions|length) %}
+      <ul class="divide-y divide-line -m-4">
+        {% for pos in results.positions[:8] %}
+        <li class="px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 hover:bg-surface2/50">
+          <div class="min-w-0">
+            <a href="/positions" class="font-medium hover:text-accent truncate block">{{ pos.title or '(untitled)' }}</a>
+            <span class="text-xs text-muted">{{ pos.institution }}</span>
+          </div>
+          <div class="flex items-center gap-2">{{ rec_badge(pos.recommendation) }}{{ score_chip(pos.score) }}</div>
+        </li>
+        {% endfor %}
+      </ul>
+    {% endcall %}
+  {% endif %}
+
+  {% if n == 0 %}
+    <div class="bg-surface border border-line rounded-xl shadow-sm">
+      {{ empty_state("No matches found", "Try a professor name, university, or keyword") }}
+    </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

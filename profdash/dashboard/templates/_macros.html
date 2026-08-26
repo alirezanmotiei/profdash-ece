@@ -1,0 +1,87 @@
+{#- Component library: badges, cards, tiles, headers, empty states. -#}
+
+{% macro _badge(text, colors) %}
+  {% if colors %}
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap
+                 {{ colors[0] }} {{ colors[1] }} {{ colors[2] }} {{ colors[3] }}">{{ text }}</span>
+  {% else %}
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap
+                 bg-surface2 text-muted">{{ text }}</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro status_badge(status) %}
+  {{ _badge(STATUS_LABELS.get(status, status or 'Unknown'), STATUS_COLORS.get(status)) }}
+{% endmacro %}
+
+{% macro app_status_badge(status) %}
+  {{ _badge(APPLICATION_STATUS_LABELS.get(status, status or 'Unknown'), APPLICATION_STATUS_COLORS.get(status)) }}
+{% endmacro %}
+
+{% macro rec_badge(rec) %}
+  {% if rec and rec.split('--')[0].strip().lower() != 'n/a' %}
+    {% set main = rec.split('--')[0].strip() %}
+    {% set extra = rec.split('--', 1)[1].strip() if '--' in rec else '' %}
+    {{ _badge(main, REC_COLORS.get(main)) }}
+    {% if extra %}<span class="text-xs text-muted ml-1">{{ extra }}</span>{% endif %}
+  {% else %}
+    <span class="text-xs text-muted">—</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro score_chip(score) %}
+  {% if score is not none %}
+    <span class="inline-flex items-center justify-center min-w-[2rem] h-6 px-1 rounded-md text-xs font-semibold
+                 {{ 'bg-green-500/15 text-green-600 dark:text-green-400' if score >= 8
+                    else 'bg-sky-500/15 text-sky-600 dark:text-sky-400' if score >= 6
+                    else 'bg-gray-500/15 text-muted' }}">{{ score }}</span>
+  {% else %}
+    <span class="text-muted">—</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro page_header(title, subtitle='', back_href='', back_label='Back') %}
+  <div class="mb-4 sm:mb-6">
+    {% if back_href %}
+      <a href="{{ back_href }}" class="text-sm text-accent hover:underline">&#8592; {{ back_label }}</a>
+    {% endif %}
+    <div class="flex flex-wrap items-end justify-between gap-2 mt-1">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-bold tracking-tight">{{ title }}</h1>
+        {% if subtitle %}<p class="text-sm text-muted mt-0.5">{{ subtitle }}</p>{% endif %}
+      </div>
+      {% if caller %}<div class="flex items-center gap-2">{{ caller() }}</div>{% endif %}
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro card(title='', subtitle='', padding='p-4') %}
+  <div class="bg-surface border border-line rounded-xl shadow-sm overflow-hidden">
+    {% if title or subtitle %}
+      <div class="flex items-center justify-between px-4 py-3 border-b border-line">
+        <div>
+          {% if title %}<h2 class="font-semibold text-sm tracking-tight">{{ title }}</h2>{% endif %}
+          {% if subtitle %}<p class="text-xs text-muted mt-0.5">{{ subtitle }}</p>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+    <div class="{{ padding }}">{{ caller() }}</div>
+  </div>
+{% endmacro %}
+
+{% macro stat_tile(label, value, hint='', href='') %}
+  {% if href %}<a href="{{ href }}" class="block bg-surface border border-line rounded-xl p-3 sm:p-4 shadow-sm hover:border-accent/50 transition-colors">
+  {% else %}<div class="bg-surface border border-line rounded-xl p-3 sm:p-4 shadow-sm">{% endif %}
+    <div class="text-xs text-muted uppercase tracking-wide">{{ label }}</div>
+    <div class="text-2xl font-bold mt-1 tabular-nums">{{ value }}</div>
+    {% if hint %}<div class="text-xs text-muted mt-1">{{ hint }}</div>{% endif %}
+  {% if href %}</a>{% else %}</div>{% endif %}
+{% endmacro %}
+
+{% macro empty_state(message, hint='') %}
+  <div class="py-10 text-center">
+    <div class="text-3xl mb-2 opacity-40">&#128230;</div>
+    <p class="text-sm text-muted">{{ message }}</p>
+    {% if hint %}<p class="text-xs text-muted/70 mt-1">{{ hint }}</p>{% endif %}
+  </div>
+{% endmacro %}

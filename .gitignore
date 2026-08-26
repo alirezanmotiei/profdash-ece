@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# profdash local state (never commit your data)
+data/
+profile.toml
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# tooling
+.pytest_cache/
+.DS_Store

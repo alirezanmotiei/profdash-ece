@@ -1,0 +1,81 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header, card, stat_tile with context %}
+
+{% block title %}Pipeline Stats — profdash{% endblock %}
+
+{% block content %}
+{{ page_header("Pipeline Stats", "Scoring funnel &amp; workload overview") }}
+
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+  {{ stat_tile("Professors", stats.total, "in pipeline", "/professors") }}
+  {{ stat_tile("Deep Reviewed", stats.stage_breakdown.get('deep_reviewed', 0)) }}
+  {{ stat_tile("Hard Excluded", (stats.phd_hard_excluded or 0) + (stats.masters_hard_excluded or 0),
+               "PhD " ~ (stats.phd_hard_excluded or 0) ~ " \u00b7 MS " ~ (stats.masters_hard_excluded or 0)) }}
+  {{ stat_tile("Deadlines ≤14d", stats.upcoming_deadlines_14d, "", "/deadlines") }}
+  {{ stat_tile("Follow-ups", stats.followups_needed, ">21 days waiting", "/follow-ups") }}
+  {{ stat_tile("Agent Tasks", stats.pending_tasks, "pending/in-progress", "/activity") }}
+</div>
+
+<div class="grid lg:grid-cols-2 gap-4">
+  {% set stage_max = stats.stage_breakdown.values()|max if stats.stage_breakdown else 1 %}
+  {% call card("Pipeline Stages") %}
+    <div class="space-y-3">
+      {% for st, cnt in stats.stage_breakdown.items() %}
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span>{{ STAGE_LABELS.get(st, st) }}</span>
+          <span class="tabular-nums text-muted">{{ cnt }}</span>
+        </div>
+        <div class="h-2 rounded-full bg-surface2 overflow-hidden">
+          <div class="h-full rounded-full bg-accent/70" style="width: {{ (100 * cnt / stage_max)|round(1) }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% endcall %}
+
+  {% set cb = stats.contact_breakdown %}
+  {% set cb_max = cb.values()|max if cb else 1 %}
+  {% call card("Outreach Status <span class='text-muted font-normal'>(deep reviewed)</span>") %}
+    <div class="space-y-3">
+      {% for st, cnt in cb.items() %}
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span>{{ STATUS_LABELS.get(st, st) }}</span>
+          <span class="tabular-nums text-muted">{{ cnt }}</span>
+        </div>
+        <div class="h-2 rounded-full bg-surface2 overflow-hidden">
+          <div class="h-full rounded-full bg-green-500/60" style="width: {{ (100 * cnt / cb_max)|round(1) }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% endcall %}
+
+  {% for key, title in [('phd_rec_breakdown', 'PhD Recommendations'), ('ms_rec_breakdown', 'Masters Recommendations')] %}
+    {% set bd = stats[key] %}
+    {% set bd_max = bd.values()|max if bd else 1 %}
+    {% call card(title) %}
+      <div class="space-y-2.5">
+        {% for rec, cnt in bd.items() %}
+        {% set c = REC_COLORS.get(rec) %}
+        <div>
+          <div class="flex justify-between items-center text-xs mb-1 gap-2">
+            <span class="truncate">{{ rec }}</span>
+            <span class="tabular-nums text-muted shrink-0">{{ cnt }}</span>
+          </div>
+          <div class="h-2 rounded-full bg-surface2 overflow-hidden">
+            <div class="h-full rounded-full
+                {{ 'bg-green-500/70' if rec == 'MUST APPLY'
+                   else 'bg-sky-500/70' if rec == 'GOOD FIT'
+                   else 'bg-amber-500/70' if rec == 'MEDIUM FIT'
+                   else 'bg-gray-400/70' }}"
+                 style="width: {{ (100 * cnt / bd_max)|round(1) }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% endcall %}
+  {% endfor %}
+</div>
+{% endblock %}

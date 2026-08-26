@@ -1,0 +1,21 @@
+<div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+  <div>
+    <span class="text-2xl font-bold tabular-nums">{{ stats.total }}</span>
+    <span class="text-muted text-xs ml-1">matching</span>
+  </div>
+  <div class="h-6 w-px bg-line hidden sm:block"></div>
+  <div class="text-sm">
+    <span class="font-medium">{{ stats.contacted }}</span> <span class="text-muted">contacted</span>
+    <span class="text-muted mx-1">&middot;</span>
+    <span class="font-medium">{{ stats.not_contacted }}</span> <span class="text-muted">not contacted</span>
+  </div>
+  <div class="flex flex-wrap items-center gap-1.5">
+    {% for st, cnt in stats.status_breakdown.items() %}
+      {% set c = STATUS_COLORS.get(st) %}
+      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                   {{ c[0] if c }} {{ c[1] if c }} {{ c[2] if c }} {{ c[3] if c }}">
+        {{ STATUS_LABELS.get(st, st or 'Unknown') }}&nbsp;<b class="tabular-nums">{{ cnt }}</b>
+      </span>
+    {% endfor %}
+  </div>
+</div>

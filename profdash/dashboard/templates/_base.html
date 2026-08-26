@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}profdash{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127891;</text></svg>">
+  <script>
+    if (localStorage.getItem('darkMode') === 'light') {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
+  <script src="/static/vendor/tailwind-play.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bg:       'rgb(var(--c-bg) / <alpha-value>)',
+            surface:  'rgb(var(--c-surface) / <alpha-value>)',
+            surface2: 'rgb(var(--c-surface-2) / <alpha-value>)',
+            line:     'rgb(var(--c-line) / <alpha-value>)',
+            ink:      'rgb(var(--c-ink) / <alpha-value>)',
+            muted:    'rgb(var(--c-muted) / <alpha-value>)',
+            accent:   'rgb(var(--c-accent) / <alpha-value>)',
+          },
+        },
+      },
+    };
+  </script>
+  <style type="text/tailwindcss">
+    :root {
+      --c-bg: 248 250 252;
+      --c-surface: 255 255 255;
+      --c-surface-2: 241 245 249;
+      --c-line: 226 232 240;
+      --c-ink: 15 23 42;
+      --c-muted: 100 116 139;
+      --c-accent: 37 99 235;
+    }
+    .dark {
+      --c-bg: 9 11 16;
+      --c-surface: 17 20 27;
+      --c-surface-2: 26 30 39;
+      --c-line: 41 46 58;
+      --c-ink: 226 232 240;
+      --c-muted: 148 163 184;
+      --c-accent: 96 165 250;
+    }
+    [x-cloak] { display: none !important; }
+    .htmx-indicator { opacity: 0; transition: opacity 150ms ease-in; pointer-events: none; }
+    .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+    [type='checkbox'] { color-scheme: light dark; }
+    ::selection { background: rgb(var(--c-accent) / 0.35); }
+    html { color-scheme: light; }
+    html.dark { color-scheme: dark; }
+  </style>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <script defer src="/static/vendor/alpine-cdn.min.js"></script>
+</head>
+<body class="bg-bg text-ink min-h-screen flex flex-col antialiased" x-data="{ open: false }">
+  <div id="htmx-indicator" class="htmx-indicator fixed top-0 left-0 right-0 h-0.5 bg-accent z-[60]"></div>
+
+  <header class="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
+    <div class="max-w-7xl mx-auto px-2 sm:px-4 h-14 flex items-center gap-3">
+      <a href="/" class="flex items-center gap-2 font-semibold tracking-tight shrink-0">
+        <span class="w-7 h-7 rounded-lg bg-accent/15 text-accent grid place-items-center text-sm">&#127891;</span>
+        <span class="hidden sm:inline">Prof<span class="text-muted font-normal">Dashboard</span></span>
+      </a>
+
+      <nav class="hidden lg:flex items-center gap-1 text-sm ml-4" aria-label="Main">
+        {% set nav_groups = [
+          ('', [('/', 'Home'), ('/professors', 'Professors'), ('/universities', 'Universities'), ('/positions', 'Positions'), ('/deadlines', 'Deadlines')]),
+          ('Outreach', [('/shortlist', 'Shortlist'), ('/follow-ups', 'Follow-ups'), ('/confirmations', 'Confirmations'), ('/activity', 'Activity')]),
+        ] %}
+        {% for group_label, links in nav_groups %}
+          {% if group_label %}<span class="text-muted/60 mx-1 select-none">&#183;</span>{% endif %}
+          {% for href, label in links %}
+            {% set active = (href == '/' and request.url.path == '/') or (href != '/' and request.url.path.startswith(href)) %}
+            <a href="{{ href }}"
+               class="px-2.5 py-1.5 rounded-md transition-colors
+                      {{ ('bg-accent/10 text-accent font-medium' if active else 'text-muted hover:text-ink hover:bg-surface2') }}">
+              {{ label }}
+            </a>
+          {% endfor %}
+        {% endfor %}
+        <span class="text-muted/60 mx-1 select-none">&#183;</span>
+        <a href="/pipeline-stats"
+           class="px-2.5 py-1.5 rounded-md transition-colors text-muted hover:text-ink hover:bg-surface2">Stats</a>
+      </nav>
+
+      <div class="flex-1"></div>
+
+      <form action="/search" method="get" class="relative w-36 sm:w-56 hidden md:block">
+        <input type="search" name="q" placeholder="Search everything&#8230;" autocomplete="off"
+               class="w-full h-8 pl-8 pr-2 rounded-lg bg-surface2 border border-line text-sm placeholder-muted
+                      focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent">
+        <span class="absolute left-2.5 top-1.5 text-muted pointer-events-none">&#128269;</span>
+      </form>
+
+      <button @click="$store.theme.toggle()"
+              class="w-8 h-8 rounded-lg hover:bg-surface2 text-muted hover:text-ink grid place-items-center"
+              title="Toggle theme">
+        <span x-show="$store.theme.isDark">&#9789;</span>
+        <span x-show="!$store.theme.isDark" x-cloak>&#9788;</span>
+      </button>
+
+      <button @click="open = !open" class="lg:hidden w-8 h-8 rounded-lg hover:bg-surface2 grid place-items-center" aria-label="Menu">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path x-show="!open" stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/>
+          <path x-show="open" x-cloak stroke-linecap="round" d="M6 6l12 12M6 18L18 6"/>
+        </svg>
+      </button>
+    </div>
+
+    {% set _hidden_countries = get_hidden_countries() %}
+    {% if _hidden_countries %}
+    {% set _showing = get_show_hidden() %}
+    <div class="border-b border-line {{ 'bg-accent/10' if _showing else 'bg-surface2/50' }}">
+      <div class="max-w-7xl mx-auto px-2 sm:px-4 py-1.5 flex items-center gap-2 text-xs flex-wrap">
+        {% if _showing %}
+          <span class="font-medium text-accent">Showing all rows</span>
+          <span class="text-muted">&middot; hidden list:</span>
+        {% else %}
+          <span class="text-muted shrink-0">Hidden:</span>
+        {% endif %}
+        {% for c in _hidden_countries %}
+          <button onclick="removeHiddenCountry('{{ c }}')"
+                  title="Stop hiding {{ c }}"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-line
+                         hover:border-red-400 hover:text-red-500 transition-colors">
+            {{ c }} <span class="text-muted">&times;</span>
+          </button>
+        {% endfor %}
+        <span class="flex-1"></span>
+        <button onclick="toggleShowHidden()"
+                class="px-2.5 py-1 rounded-full font-medium transition-colors
+                       {{ 'bg-accent text-white hover:bg-accent/90' if _showing
+                          else 'border border-line text-muted hover:text-accent hover:border-accent/50' }}">
+          {{ 'Turn off' if _showing else 'Show hidden' }}
+        </button>
+      </div>
+    </div>
+    {% endif %}
+
+    <div x-show="open" x-cloak @click.outside="open = false"
+         class="lg:hidden border-t border-line bg-surface px-3 py-2 space-y-1 text-sm">
+      <form action="/search" method="get" class="md:hidden pb-2">
+        <input type="search" name="q" placeholder="Search everything&#8230;"
+               class="w-full h-9 px-3 rounded-lg bg-surface2 border border-line text-sm focus:outline-none focus:ring-2 focus:ring-accent/50">
+      </form>
+      {% set nav_flat = [('/', 'Home'), ('/professors', 'Professors'), ('/universities', 'Universities'), ('/positions', 'Positions'), ('/deadlines', 'Deadlines'), ('/shortlist', 'Shortlist'), ('/follow-ups', 'Follow-ups'), ('/confirmations', 'Confirmations'), ('/activity', 'Activity'), ('/pipeline-stats', 'Pipeline Stats')] %}
+      {% for href, label in nav_flat %}
+        {% set active = (href == '/' and request.url.path == '/') or (href != '/' and request.url.path.startswith(href)) %}
+        <a href="{{ href }}"
+           class="block px-3 py-2 rounded-md {{ 'bg-accent/10 text-accent font-medium' if active else 'text-muted hover:text-ink hover:bg-surface2' }}">
+          {{ label }}
+        </a>
+      {% endfor %}
+    </div>
+  </header>
+
+  <main id="main-content" class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-4 sm:py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="border-t border-line text-xs text-muted py-3">
+    <div class="max-w-7xl mx-auto px-2 sm:px-4 flex justify-between">
+      <span>profdash</span>
+      <span>Times shown in {{ TZ_LABEL }}</span>
+    </div>
+  </footer>
+
+  <script>
+    async function removeHiddenCountry(country) {
+      const current = {{ get_hidden_countries()|tojson }};
+      await fetch('/settings/hidden-countries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ countries: current.filter(c => c !== country) }),
+      });
+      location.reload();
+    }
+    async function toggleShowHidden() {
+      await fetch('/settings/hidden-countries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ show_hidden: {{ 'false' if get_show_hidden() else 'true' }} }),
+      });
+      location.reload();
+    }
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: document.documentElement.classList.contains('dark'),
+        get isDark() { return this.dark; },
+        toggle() {
+          this.dark = !this.dark;
+          document.documentElement.classList.toggle('dark', this.dark);
+          localStorage.setItem('darkMode', this.dark ? 'dark' : 'light');
+        },
+      });
+    });
+  </script>
+</body>
+</html>

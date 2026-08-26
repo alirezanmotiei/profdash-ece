@@ -1,0 +1,10 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header with context %}
+
+{% block title %}Confirmations — profdash{% endblock %}
+
+{% block content %}
+{{ page_header("Confirmations", items|length ~ " Gmail-detected suggestion(s) waiting for review") }}
+
+{% include "_confirmations_list.html" %}
+{% endblock %}

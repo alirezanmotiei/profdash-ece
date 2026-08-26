@@ -1,0 +1,175 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header, card, status_badge, rec_badge, score_chip, empty_state with context %}
+
+{% block title %}{{ p.professor }} — profdash{% endblock %}
+
+{% block content %}
+{{ page_header(p.professor, subtitle, back_href="/professors", back_label="All professors") }}
+
+<div class="flex flex-wrap items-center gap-2 mb-5">
+  {% if p.homepage %}
+    <a href="{{ p.homepage }}" target="_blank" rel="noopener"
+       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">&#127968; Homepage</a>
+  {% endif %}
+  {% if p.dblp_url %}
+    <a href="{{ p.dblp_url }}" target="_blank" rel="noopener"
+       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">&#128218; DBLP</a>
+  {% endif %}
+  {% if p.scholar %}
+    <a href="{{ p.scholar }}" target="_blank" rel="noopener"
+       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">&#127891; Scholar</a>
+  {% endif %}
+  {% if p.orcid %}
+    <a href="https://orcid.org/{{ p.orcid }}" target="_blank" rel="noopener"
+       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">ORCID</a>
+  {% endif %}
+  {% if p.email %}
+    <a href="mailto:{{ p.email }}"
+       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">&#9993; {{ p.email }}</a>
+  {% endif %}
+  <span class="inline-flex items-center h-7 px-2.5 rounded-full bg-surface2 text-xs text-muted">
+    CSRankings #{{ p.csrankings_rank }}{% if p.prestige_band and p.prestige_band != 'unknown' %} &middot; prestige {{ p.prestige_band }}{% endif %}
+  </span>
+  {{ status_badge(p.status) }}
+</div>
+
+<div class="grid lg:grid-cols-3 gap-4">
+
+  <div class="lg:col-span-2 space-y-4">
+
+    {% for track, rec, score, why, fund, excl_flag, excl_reason in [
+        ('PhD', p.phd_recommendation, p.final_score_phd, p.phd_why, p.phd_funding_confidence, p.phd_hard_exclude, p.phd_exclusion_reason),
+        ('Masters', p.masters_recommendation, p.final_score_masters, p.masters_why, p.masters_funding_confidence, p.masters_hard_exclude, p.masters_exclusion_reason)] %}
+      <div class="bg-surface border border-line rounded-xl shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-line">
+          <h2 class="font-semibold text-sm">{{ track }} Assessment</h2>
+          <div class="flex items-center gap-2">
+            {{ rec_badge(rec) }}
+            {{ score_chip(score) }}
+          </div>
+        </div>
+        <div class="p-4 space-y-2">
+          {% if excl_flag %}
+            <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              &#9888; Hard excluded{% if excl_reason %}: {{ excl_reason }}{% endif %}
+            </div>
+          {% endif %}
+          {% if why %}<p class="text-sm leading-relaxed">{{ why }}</p>{% endif %}
+          <div class="flex flex-wrap gap-2 text-xs pt-1">
+            {% if fund %}<span class="px-2 py-0.5 rounded-full bg-surface2 text-muted">funding: {{ fund }}</span>{% endif %}
+            {% if track == 'Masters' and p.masters_springboard_signal and p.masters_springboard_signal != 'none' %}
+              <span class="px-2 py-0.5 rounded-full bg-surface2 text-muted">springboard signal: {{ p.masters_springboard_signal }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+    {% include "_notes_card.html" %}
+
+    {% if papers %}
+      {% call card("Suggested Papers", papers|length ~ " papers, newest fetch first") %}
+        <ol class="space-y-3">
+          {% for paper in papers %}
+          <li class="flex gap-3">
+            <span class="w-6 h-6 shrink-0 rounded-full bg-accent/10 text-accent grid place-items-center text-xs font-bold">{{ paper.rank }}</span>
+            <div class="min-w-0">
+              {% if paper.source_url %}
+                <a href="{{ paper.source_url }}" target="_blank" rel="noopener" class="text-sm font-medium hover:text-accent">{{ paper.title }}</a>
+              {% else %}
+                <span class="text-sm font-medium">{{ paper.title }}</span>
+              {% endif %}
+              <div class="text-xs text-muted">{{ paper.venue }}{% if paper.year %} &middot; {{ paper.year }}{% endif %}</div>
+              {% if paper.relevance_note %}<p class="text-xs text-muted mt-0.5">{{ paper.relevance_note }}</p>{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+      {% endcall %}
+    {% endif %}
+
+    {% if evidence %}
+      <div x-data="{ showAll: false }">
+        {% call card("Evidence", evidence|length ~ " sourced claims") %}
+          <ol class="space-y-3">
+            {% for e in evidence[:8] %}
+            <li class="text-sm">
+              <p>{{ e.claim }}</p>
+              <div class="flex flex-wrap items-center gap-2 mt-1 text-xs">
+                <span class="px-2 py-0.5 rounded-full bg-surface2 text-muted">{{ e.source_type or 'source' }}</span>
+                {% if e.stage %}<span class="px-2 py-0.5 rounded-full bg-surface2 text-muted">{{ e.stage }}</span>{% endif %}
+                {% if e.source_url %}<a href="{{ e.source_url }}" target="_blank" rel="noopener" class="text-accent hover:underline">source &rarr;</a>{% endif %}
+                <span class="text-muted tabular-nums">{{ e.fetched_at|localtz }}</span>
+              </div>
+            </li>
+            {% endfor %}
+            {% if evidence|length > 8 %}
+            <div x-show="showAll" x-cloak>
+              {% for e in evidence[8:] %}
+              <li class="text-sm mt-3">
+                <p>{{ e.claim }}</p>
+                <div class="flex flex-wrap items-center gap-2 mt-1 text-xs">
+                  <span class="px-2 py-0.5 rounded-full bg-surface2 text-muted">{{ e.source_type or 'source' }}</span>
+                  {% if e.stage %}<span class="px-2 py-0.5 rounded-full bg-surface2 text-muted">{{ e.stage }}</span>{% endif %}
+                  {% if e.source_url %}<a href="{{ e.source_url }}" target="_blank" rel="noopener" class="text-accent hover:underline">source &rarr;</a>{% endif %}
+                  <span class="text-muted tabular-nums">{{ e.fetched_at|localtz }}</span>
+                </div>
+              </li>
+              {% endfor %}
+            </div>
+            <button @click="showAll = !showAll"
+                    class="mt-2 text-sm text-accent hover:underline"
+                    x-text="showAll ? 'Show less' : 'Show all ' ~ evidence.length ~ ' items'"></button>
+            {% endif %}
+          </ol>
+        {% endcall %}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="space-y-4">
+    {% include "_status_card.html" %}
+    {% include "_agent_section.html" %}
+    {% include "_draft_card.html" %}
+
+    {% call card("University Context",
+                 uni_ctx.deadlines|length ~ " deadlines" ~ (" &middot; " ~ uni_ctx.positions|length ~ " positions" if uni_ctx.positions else "")) %}
+      {% if uni_ctx.deadlines or uni_ctx.positions %}
+        {% if uni_ctx.deadlines %}
+        <ul class="space-y-2 mb-3">
+          {% for d in uni_ctx.deadlines[:5] %}
+          {% set dd = d.deadline_date|days_until %}
+          <li class="flex items-center justify-between gap-2 text-xs">
+            <div class="min-w-0">
+              <span class="truncate block">{{ d.track or 'program' }} &middot; {{ d.deadline_type or 'deadline' }}</span>
+              <span class="text-muted tabular-nums">{{ d.deadline_date }}</span>
+            </div>
+            {% if dd is not none %}
+              <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full font-medium whitespace-nowrap
+                {{ 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' if dd <= 7
+                   else 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' if dd <= 30
+                   else 'bg-surface2 text-muted' }}">{{ dd }}d</span>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if uni_ctx.positions %}
+        <ul class="space-y-2 border-t border-line pt-3 mb-3">
+          {% for pos in uni_ctx.positions[:3] %}
+          <li class="text-xs">
+            <span class="truncate block font-medium">{{ pos.title or '(untitled)' }}</span>
+            <div class="mt-0.5">{{ rec_badge(pos.recommendation) }}</div>
+          </li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+        <a href="/university/{{ uni_ctx.university_slug|lower if uni_ctx.university_slug else '' }}"
+           class="inline-block text-sm text-accent hover:underline">University page &rarr;</a>
+      {% else %}
+        {{ empty_state("No deadlines or positions recorded for this university") }}
+      {% endif %}
+    {% endcall %}
+  </div>
+</div>
+{% endblock %}

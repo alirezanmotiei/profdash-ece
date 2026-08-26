@@ -1,0 +1,55 @@
+{% from "_macros.html" import rec_badge with context %}
+<tr id="pos-row-{{ p.id }}" class="border-b border-line hover:bg-surface2/50 align-top
+                                   {{ 'opacity-50' if p.application_status in ('rejected', 'withdrawn', 'not_interested') }}">
+  <td class="px-4 py-2.5 max-w-[20rem]">
+    {% if p.source_url %}
+      <a href="{{ p.source_url }}" target="_blank" rel="noopener" class="font-medium hover:text-accent">{{ p.title or '(untitled)' }}</a>
+    {% else %}
+      <span class="font-medium">{{ p.title or '(untitled)' }}</span>
+    {% endif %}
+    <div class="text-xs text-muted mt-0.5">
+      {{ p.institution }}{% if p.location_country %} &middot; {{ p.location_country }}{% endif %}
+      {% if p.mailing_list %} &middot; via {{ p.mailing_list }}{% endif %}
+    </div>
+    {% if p.funding_stated %}
+      <div class="text-xs text-green-700 dark:text-green-400 mt-1 truncate max-w-[18rem]" title="{{ p.funding_stated }}">&#128176; {{ p.funding_stated }}</div>
+    {% endif %}
+  </td>
+  <td class="px-4 py-2.5 whitespace-nowrap">
+    <span class="capitalize text-xs px-2 py-0.5 rounded-full bg-surface2 text-muted">{{ p.track or '—' }}</span>
+  </td>
+  <td class="px-4 py-2.5">{{ rec_badge(p.recommendation) }}</td>
+  <td class="px-4 py-2.5 tabular-nums">{{ p.score if p.score is not none else '—' }}</td>
+  <td class="px-4 py-2.5 whitespace-nowrap text-xs tabular-nums">
+    {{ p.deadline }}
+    {% set dd = p.deadline|days_until %}
+    {% if dd is not none and dd >= 0 and p.status != 'expired' %}
+      <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full font-medium
+        {{ 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' if dd <= 7
+           else 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' if dd <= 30
+           else 'bg-surface2 text-muted' }}">{{ dd }}d</span>
+    {% endif %}
+  </td>
+  <td class="px-4 py-2.5">
+    {% if p.professor_id %}
+      <a href="/professor/{{ p.professor_id }}" class="text-sm hover:text-accent">{{ p.professor_name }}</a>
+    {% elif p.professor_name %}
+      <span class="text-sm">{{ p.professor_name }}</span>
+    {% else %}
+      <span class="text-muted">&mdash;</span>
+    {% endif %}
+  </td>
+  <td class="px-4 py-2.5">
+    <select name="application_status" aria-label="Application status"
+            class="max-w-[11rem] text-xs rounded-md border border-line bg-surface px-1.5 py-1
+                   hover:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/40"
+            hx-post="/position/{{ p.id }}/application-status" hx-target="#pos-row-{{ p.id }}" hx-swap="outerHTML">
+      {% for s in APPLICATION_STATUS_TAXONOMY %}
+        <option value="{{ s }}" {{ 'selected' if p.application_status == s }}>{{ APPLICATION_STATUS_LABELS.get(s, s) }}</option>
+      {% endfor %}
+    </select>
+    {% if p.application_notes %}
+      <div class="text-xs text-muted mt-1 truncate max-w-[12rem]" title="{{ p.application_notes }}">{{ p.application_notes }}</div>
+    {% endif %}
+  </td>
+</tr>

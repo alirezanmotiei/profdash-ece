@@ -1,0 +1,38 @@
+{% from "_macros.html" import rec_badge, score_chip with context %}
+<tr id="row-{{ r.id }}" class="border-b border-line hover:bg-surface2/50 transition-colors">
+  <td class="px-2 sm:px-3 py-2">
+    <input type="checkbox" value="{{ r.id }}" aria-label="Select {{ r.professor }}"
+           class="rounded border-line text-accent focus:ring-accent/50"
+           :checked="$store.bulk.ids.includes('{{ r.id }}')"
+           @change="$store.bulk.toggle('{{ r.id }}')">
+  </td>
+  <td class="px-3 py-2 max-w-[14rem]">
+    <a href="/professor/{{ r.id }}" class="font-medium hover:text-accent truncate block">{{ r.professor }}</a>
+  </td>
+  <td class="px-3 py-2 text-muted max-w-[16rem]"><span class="truncate block">{{ r.university }}</span></td>
+  <td class="px-3 py-2 text-xs text-muted whitespace-nowrap">{{ r.location_country or '—' }}</td>
+  <td class="px-3 py-2 text-xs whitespace-nowrap">
+    {{ r.fit_tier or '—' }}
+    {% if r.stage and r.stage != 'deep_reviewed' %}
+      <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium align-middle
+                   {{ 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' if r.stage == 'triaged'
+                      else 'bg-surface2 text-muted' }}" title="{{ STAGE_LABELS.get(r.stage, r.stage) }}">
+        {{ STAGE_LABELS.get(r.stage, r.stage) }}
+      </span>
+    {% endif %}
+  </td>
+  <td class="px-3 py-2">{{ rec_badge(r.phd_recommendation) }}</td>
+  <td class="px-3 py-2">{{ score_chip(r.final_score_phd) }}</td>
+  <td class="px-3 py-2">{{ rec_badge(r.masters_recommendation) }}</td>
+  <td class="px-3 py-2">{{ score_chip(r.final_score_masters) }}</td>
+  <td class="px-3 py-2">
+    <select name="status" aria-label="Status for {{ r.professor }}"
+            class="max-w-[10rem] text-xs rounded-md border border-line bg-surface px-1.5 py-1
+                   hover:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/40"
+            hx-post="/professor/{{ r.id }}/status" hx-target="closest tr" hx-swap="outerHTML">
+      {% for s in STATUS_TAXONOMY %}
+        <option value="{{ s }}" {{ 'selected' if r.status == s }}>{{ STATUS_LABELS.get(s, s) }}</option>
+      {% endfor %}
+    </select>
+  </td>
+</tr>

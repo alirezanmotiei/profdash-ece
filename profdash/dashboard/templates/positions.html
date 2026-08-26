@@ -1,0 +1,56 @@
+{% extends "_base.html" %}
+{% from "_macros.html" import page_header, empty_state with context %}
+{% set sel_classes = 'h-8 px-2 rounded-lg bg-surface border border-line text-xs max-w-[13rem]
+                      hover:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/40' %}
+
+{% block title %}Positions — profdash{% endblock %}
+
+{% block content %}
+{{ page_header("Positions", total ~ " position(s) from mailing lists &amp; digests") }}
+
+<form method="get" action="/positions" class="flex flex-wrap items-center gap-2 mb-4">
+  <input type="search" name="search" value="{{ qp.get('search', '') }}" placeholder="Search title / institution / professor&hellip;" autocomplete="off"
+         class="w-full sm:w-60 h-9 px-3 rounded-lg bg-surface border border-line text-sm placeholder-muted
+                focus:outline-none focus:ring-2 focus:ring-accent/50">
+  <select name="track" class="{{ sel_classes }}">
+    <option value="">All tracks</option>
+    {% for v in options.get('track', []) %}<option value="{{ v }}" {{ 'selected' if qp.get('track') == v }}>{{ v }}</option>{% endfor %}
+  </select>
+  <select name="recommendation" class="{{ sel_classes }}">
+    <option value="">All recommendations</option>
+    {% for v in options.get('recommendation', []) %}<option value="{{ v }}" {{ 'selected' if qp.get('recommendation') == v }}>{{ v }}</option>{% endfor %}
+  </select>
+  <select name="application_status" class="{{ sel_classes }}">
+    <option value="">All application states</option>
+    {% for v in APPLICATION_STATUS_TAXONOMY %}
+      <option value="{{ v }}" {{ 'selected' if qp.get('application_status') == v }}>{{ APPLICATION_STATUS_LABELS.get(v, v) }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="h-8 px-3 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent/90">Apply</button>
+  {% if qp.get('search') or qp.get('track') or qp.get('recommendation') or qp.get('application_status') %}
+    <a href="/positions" class="text-xs text-muted hover:text-ink underline underline-offset-2">Clear</a>
+  {% endif %}
+</form>
+
+<div class="overflow-x-auto border border-line rounded-xl bg-surface shadow-sm">
+  <table class="w-full text-sm min-w-[64rem]">
+    <thead>
+      <tr class="text-left text-xs text-muted uppercase tracking-wide border-b border-line bg-surface2/50">
+        <th class="px-4 py-2">Position</th>
+        <th class="px-4 py-2">Track</th>
+        <th class="px-4 py-2">Recommendation</th>
+        <th class="px-4 py-2">Score</th>
+        <th class="px-4 py-2 whitespace-nowrap">Deadline</th>
+        <th class="px-4 py-2 hidden lg:table-cell">Contact</th>
+        <th class="px-4 py-2">Application</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in rows %}
+        {% include "_position_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not rows %}{{ empty_state("No positions match your filters") }}{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% from "_macros.html" import empty_state with context %}
+{% set sel_classes = 'h-8 px-2 rounded-lg bg-surface border border-line text-xs max-w-[13rem]
+                      hover:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/40' %}
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <input type="search" name="search" value="{{ qp.get('search', '') }}" placeholder="Search university or cycle&hellip;" autocomplete="off"
+         class="w-full sm:w-56 h-9 px-3 rounded-lg bg-surface border border-line text-sm placeholder-muted
+                focus:outline-none focus:ring-2 focus:ring-accent/50">
+  <select name="university" class="{{ sel_classes }}">
+    <option value="">All universities</option>
+    {% for v in options.get('university', []) %}
+      <option value="{{ v }}" {{ 'selected' if qp.get('university') == v }}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <select name="track" class="{{ sel_classes }}">
+    <option value="">All tracks</option>
+    {% for v in options.get('track', []) %}
+      <option value="{{ v }}" {{ 'selected' if qp.get('track') == v }}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <select name="deadline_type" class="{{ sel_classes }}">
+    <option value="">All types</option>
+    {% for v in options.get('deadline_type', []) %}
+      <option value="{{ v }}" {{ 'selected' if qp.get('deadline_type') == v }}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <label class="inline-flex items-center gap-1.5 text-xs text-muted cursor-pointer select-none">
+    <input type="checkbox" name="upcoming" value="0" {{ 'checked' if qp.get('upcoming') == '0' }}
+           class="rounded border-line text-accent focus:ring-accent/50">
+    include past
+  </label>
+  <button type="submit" class="h-8 px-3 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent/90">Apply</button>
+</div>
+
+<div class="overflow-x-auto border border-line rounded-xl bg-surface shadow-sm">
+  <table class="w-full text-sm min-w-[52rem]">
+    <thead>
+      <tr class="text-left text-xs text-muted uppercase tracking-wide border-b border-line bg-surface2/50">
+        <th class="px-4 py-2 whitespace-nowrap">Date</th>
+        <th class="px-4 py-2">University</th>
+        <th class="px-4 py-2 hidden md:table-cell">Track</th>
+        <th class="px-4 py-2 hidden lg:table-cell">Program</th>
+        <th class="px-4 py-2 hidden sm:table-cell">Type</th>
+        <th class="px-4 py-2">Confidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in rows %}
+      {% set dd = d.deadline_date|days_until %}
+      <tr class="border-b border-line hover:bg-surface2/50
+                 {{ 'opacity-60' if dd is not none and dd < 0 }}">
+        <td class="px-4 py-2 whitespace-nowrap">
+          <span class="tabular-nums">{{ d.deadline_date }}</span>
+          {% if dd is not none and dd >= 0 %}
+            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+              {{ 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' if dd <= 7
+                 else 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' if dd <= 30
+                 else 'bg-surface2 text-muted' }}">{{ dd }}d</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-2 max-w-[16rem]">
+          <a href="/university/{{ d.university|lower|urlencode }}" class="font-medium hover:text-accent truncate block">{{ d.university }}</a>
+          {% if d.cycle_label %}<span class="text-xs text-muted">{{ d.cycle_label }}</span>{% endif %}
+        </td>
+        <td class="px-4 py-2 capitalize hidden md:table-cell">{{ d.track or '—' }}</td>
+        <td class="px-4 py-2 text-muted hidden lg:table-cell max-w-[12rem]"><span class="truncate block">{{ d.program_name or '—' }}</span></td>
+        <td class="px-4 py-2 hidden sm:table-cell text-muted">{{ d.deadline_type or '—' }}</td>
+        <td class="px-4 py-2">
+          {% if d.deadline_date_confidence %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap
+              {{ 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' if d.deadline_date_confidence == 'firm'
+                 else 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' if d.deadline_date_confidence == 'rolling'
+                 else 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' if d.deadline_date_confidence == 'approximate'
+                 else 'bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300' }}">{{ d.deadline_date_confidence }}</span>
+          {% else %}<span class="text-muted">&mdash;</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not rows %}{{ empty_state("No deadlines match your filters") }}{% endif %}
+</div>
+<p class="text-xs text-muted mt-2">{{ total }} deadline(s) &middot; showing first {{ rows|length }}</p>
