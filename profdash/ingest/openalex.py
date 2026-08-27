@@ -52,6 +52,8 @@ COUNTRY_NAMES = {
     "DE": "Germany", "GB": "United Kingdom", "AT": "Austria",
     "SE": "Sweden", "NO": "Norway", "DK": "Denmark", "NL": "Netherlands",
     "FR": "France", "IT": "Italy", "ES": "Spain", "BE": "Belgium",
+    "AU": "Australia", "JP": "Japan", "KR": "South Korea",
+    "SG": "Singapore", "TR": "Turkey",
 }
 
 # OpenAlex topic subfields that make up ECE + BME.
