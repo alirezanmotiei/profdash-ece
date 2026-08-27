@@ -89,6 +89,23 @@ def cmd_import(args):
     print(f"Dataset cache: {stats['cache']}")
 
 
+def cmd_import_openalex(args):
+    db_path = _db_arg(args)
+    from .ingest import openalex
+    stats = openalex.run_import(
+        db_path,
+        countries=args.country or None,
+        min_h=args.min_h_index,
+        min_works=args.min_works,
+        limit=args.limit,
+        refresh_topics=args.refresh_topics,
+        log=print,
+    )
+    print(f"\nImported: {stats['total_rows']} rows "
+          f"({stats['inserted']} new, {stats['updated']} refreshed)")
+    print(f"Cache: {stats['cache']}")
+
+
 def cmd_serve(args):
     import os
     import uvicorn
@@ -249,6 +266,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_cs.add_argument("--db", help="path to profdash.sqlite")
     p_cs.set_defaults(fn=cmd_import)
 
+    p_oa = imp_sub.add_parser(
+        "openalex",
+        help="OpenAlex ECE/BME faculty dataset (electrical & biomedical eng.)")
+    p_oa.add_argument("--country", action="append",
+                      help="ISO-2 code, e.g. --country US --country DE (repeatable)")
+    p_oa.add_argument("--min-h-index", type=int, default=18,
+                      help="minimum h-index (senior-researcher filter, default 18)")
+    p_oa.add_argument("--min-works", type=int, default=30,
+                      help="minimum works count (default 30)")
+    p_oa.add_argument("--limit", type=int, help="cap imported rows (testing)")
+    p_oa.add_argument("--refresh-topics", action="store_true",
+                      help="re-fetch the topic-ID cache")
+    p_oa.add_argument("--db", help="path to profdash.sqlite")
+    p_oa.set_defaults(fn=cmd_import_openalex)
+
     p_serve = sub.add_parser("serve", help="run the dashboard")
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8000)
@@ -301,6 +333,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None):
+    # Windows consoles default to cp1252; digests contain Unicode names.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
     ap = build_parser()
     args = ap.parse_args(argv)
     if args.version:

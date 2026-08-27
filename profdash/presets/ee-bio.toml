@@ -1,0 +1,56 @@
+# Venue tiers tuned for bioelectronics / ECE / biomedical-engineering
+# scoring digests. Matched as case-insensitive substrings of the venue
+# name (DBLP abbreviations and OpenAlex full journal names both work).
+# `preset = "ee-bio"` in profile.toml [venues].
+
+strong = [
+    "Nature Electronics",
+    "Nature Biomedical Engineering",
+    "Nature Communications",
+    "Nature Methods",
+    "Nature Photonics",
+    "Nature Materials",
+    "Science Translational Medicine",
+    "Science Advances",
+    "PNAS",
+    "IEEE Journal of Solid-State Circuits",
+    "IEEE Transactions on Medical Imaging",
+    "IEEE Transactions on Biomedical Engineering",
+    "IEEE Transactions on Microwave Theory",
+    "Medical Image Analysis",
+    "Med",
+]
+
+moderate = [
+    "IEEE Journal of Biomedical and Health Informatics",
+    "IEEE Transactions on Circuits and Systems",
+    "IEEE Transactions on Biomedical Circuits",
+    "IEEE Transactions on Antennas and Propagation",
+    "IEEE Transactions on Signal Processing",
+    "IEEE Transactions on Instrumentation",
+    "IEEE Sensors Journal",
+    "IEEE Microwave and Wireless Components Letters",
+    "IEEE Open Journal",
+    "Lab on a Chip",
+    "Biosensors and Bioelectronics",
+    "Bioelectrochemistry",
+    "Bioelectricity",
+    "Medical Physics",
+    "Physics in Medicine and Biology",
+    "IEEE Transactions on Nanobioscience",
+    "Microsystems & Nanoengineering",
+    "Analytical Chemistry",
+    "Biomicrofluidics",
+    "Technology in Cancer Research",
+]
+
+lower = [
+    "IEEE Access",
+    "Sensors",
+    "Scientific Reports",
+    "PLOS ONE",
+    "Electronics Letters",
+    "Applied Sciences",
+    "Micromachines",
+    "Bioengineering",
+]

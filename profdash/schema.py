@@ -26,6 +26,8 @@ DDL: list[str] = [
         homepage                    TEXT,
         dblp_url                    TEXT,
         orcid                       TEXT,
+        openalex_id                 TEXT,
+        research_bucket             TEXT,
         scholar                     TEXT,
         email                       TEXT,
         csrankings_rank             INTEGER,

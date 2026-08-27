@@ -37,9 +37,17 @@ def _normalize_rec_dashes(conn: sqlite3.Connection) -> None:
         )
 
 
+def _add_openalex_columns(conn: sqlite3.Connection) -> None:
+    """OpenAlex importer support: author id + research bucket per professor."""
+    for col in ("openalex_id", "research_bucket"):
+        if not _column_exists(conn, "professors", col):
+            conn.execute(f"ALTER TABLE professors ADD COLUMN {col} TEXT")
+
+
 STEPS = [
     ("legacy-status-rename", _legacy_status_rename),
     ("normalize-rec-dashes", _normalize_rec_dashes),
+    ("openalex-columns", _add_openalex_columns),
 ]
 
 

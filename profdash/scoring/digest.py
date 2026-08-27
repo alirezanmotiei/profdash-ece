@@ -173,6 +173,56 @@ def build_digest(name: str, hits: list[dict], strong: set[str], moderate: set[st
     return "\n".join(lines)
 
 
+def _oa_works(client: httpx.Client, openalex_id: str) -> list[dict]:
+    """Recent (>=2019) works for one OpenAlex author id."""
+    import os as _os
+    sel = "publication_year,title,primary_location"
+    url = (f"https://api.openalex.org/works?filter=author.id:{openalex_id},"
+           f"publication_year:>2018&sort=publication_date:desc&per-page=50"
+           f"&select={sel}")
+    mailto = _os.environ.get("OPENALEX_MAILTO")
+    if mailto:
+        url += f"&mailto={mailto}"
+    r = client.get(url, headers={"User-Agent": USER_AGENT},
+                   follow_redirects=True)
+    r.raise_for_status()
+    return r.json().get("results", [])
+
+
+def _venue_hit(venue: str, tiers: set[str]) -> bool:
+    """Tier match as a case-insensitive substring of the venue name."""
+    v = (venue or "").lower()
+    return any(t.lower().strip() in v for t in tiers if t.strip())
+
+
+def build_digest_openalex(name: str, works: list[dict],
+                          strong: set[str], moderate: set[str]) -> str:
+    """Same DIGEST text shape as the DBLP builder, fed by OpenAlex works."""
+    strong_recent, med_recent, other, years = [], [], [], []
+    for w in works:
+        y = w.get("publication_year")
+        if y:
+            years.append(int(y))
+        venue = (((w.get("primary_location") or {}).get("source") or {})
+                 .get("display_name") or "?")
+        line = "%s [%s] %s" % (y, venue[:30], (w.get("title") or "?")[:90])
+        recent = y is not None and int(y) >= datetime.date.today().year - 3
+        if _venue_hit(venue, strong):
+            (strong_recent if recent else other).append(line)
+        elif _venue_hit(venue, moderate):
+            (med_recent if recent else other).append(line)
+        else:
+            other.append(line)
+    span = "%d-%d" % (min(years), max(years)) if years else "?"
+    lines = ["DIGEST %s | hits=%d | span=%s | recentSTRONG=%d "
+             "recentMEDIUM=%d | source=openalex"
+             % (name, len(works), span, len(strong_recent), len(med_recent)),
+             "-- RECENT STRONG/MEDIUM --"]
+    lines += (strong_recent + med_recent) if (strong_recent or med_recent) else ["  (none)"]
+    lines += ["-- OTHER (max 14) --"] + other[:14]
+    return "\n".join(lines)
+
+
 def fetch_digest(prof_id: str, db_path: Path, *, cache_root: Path | None = None,
                  strong: set[str] | None = None, moderate: set[str] | None = None,
                  max_age_h: float = 24.0, client: httpx.Client | None = None) -> str:
@@ -186,18 +236,25 @@ def fetch_digest(prof_id: str, db_path: Path, *, cache_root: Path | None = None,
 
     conn = sqlite3.connect(str(db_path))
     try:
-        row = conn.execute("SELECT professor FROM professors WHERE id=?",
-                           (prof_id,)).fetchone()
+        try:
+            row = conn.execute(
+                "SELECT professor, openalex_id FROM professors WHERE id=?",
+                (prof_id,)).fetchone()
+        except sqlite3.OperationalError:  # pre-migration DB
+            row = conn.execute(
+                "SELECT professor, NULL FROM professors WHERE id=?",
+                (prof_id,)).fetchone()
     finally:
         conn.close()
     if not row:
         return json.dumps({"error": "not_found", "id": prof_id})
-    name = row[0]
+    name, openalex_id = row[0], row[1]
 
     cache_root = cache_root or (Path(db_path).parent / "sources_cache")
     pdir = cache_root / prof_id.replace("/", "_")
     pdir.mkdir(parents=True, exist_ok=True)
     metap, xmlp = pdir / "meta.json", pdir / "dblp.xml"
+    oajsonp = pdir / "openalex.json"
 
     if metap.exists() and xmlp.exists():
         if (time.time() - metap.stat().st_mtime) / 3600.0 < max_age_h:
@@ -205,10 +262,36 @@ def fetch_digest(prof_id: str, db_path: Path, *, cache_root: Path | None = None,
             if has_hits(xml) and '<hits total="0"' not in xml:
                 return build_digest(name, parse_hits(xml), strong, moderate)
 
+    if metap.exists() and oajsonp.exists():
+        if (time.time() - metap.stat().st_mtime) / 3600.0 < max_age_h:
+            try:
+                works = json.loads(oajsonp.read_text())
+                if works:
+                    return build_digest_openalex(name, works, strong, moderate)
+            except Exception:
+                pass  # fall through to a fresh fetch
+
     xml, form = fetch_xml(client, name)
     if xml is None:
         (pdir / "dblp_fail.txt").write_text(
             "no hits for %r\n" % name_forms(name))
+        if openalex_id:
+            # EE/BME professors are often missing from DBLP — fall back
+            # to their OpenAlex publication record.
+            try:
+                works = _oa_works(client, openalex_id)
+            except Exception:
+                works = []
+            if works:
+                oajsonp.write_text(json.dumps(works))
+                metap.write_text(json.dumps({
+                    "prof": name, "form": "openalex",
+                    "sha256": hashlib.sha256(
+                        json.dumps(works).encode()).hexdigest(),
+                    "fetched_at": datetime.datetime.now(
+                        datetime.timezone.utc).isoformat()},
+                    indent=1))
+                return build_digest_openalex(name, works, strong, moderate)
         return json.dumps({"error": "dblp_no_hits", "id": prof_id, "name": name})
     xmlp.write_text(xml)
     metap.write_text(json.dumps({

@@ -1,3 +1,51 @@
+# profdash-ece — OpenAlex import for Electrical & Biomedical Engineering
+
+This fork extends [profdash](https://github.com/sahroush/profdash) with an
+OpenAlex-backed importer so that **pure ECE / BME professors** (analog, RF,
+telecom, power, signal processing, bioelectronics, biomedical engineering,
+medical physics) can be imported and scored — CSRankings only covers CS.
+
+## What was added
+
+- `profdash/ingest/openalex.py` — imports authors from the OpenAlex
+  graph filtered by the two relevant topic subfields (2204 Biomedical
+  Engineering, 2208 Electrical & Electronic Engineering) + curated
+  adjacent topics (electroporation, radiation therapy, ultrasound,
+  EMG, ...), by target countries, and by seniority thresholds
+  (h-index / works count). Each professor is classified into a
+  `research_bucket`: `biomed`, `circuits`, `ml`, or `ee_general`
+  (new columns: `openalex_id`, `research_bucket`).
+- `prof digest` now falls back to OpenAlex publications when an author
+  is missing from DBLP (most EE professors are), and tiers journals
+  with the `ee-bio` venue preset.
+- `profdash/presets/ee-bio.toml` — venue tiers for
+  bioelectronics/ECE (Nature Electronics, IEEE JSSC/TBME/TMTT, ...).
+- `prompts/scoring-pass-ee.md` — scoring prompt pack tuned for the
+  ECE/BME pipeline.
+
+## ECE usage
+
+```bash
+prof import openalex --country US --country CA --country DE --country CH \
+                     --country GB --country AT --country SE --country NO \
+                     --country DK --country NL --country FR --country IT \
+                     --country ES --country BE
+prof serve
+```
+
+Set `OPENALEX_MAILTO=you@example.com` to join the OpenAlex polite pool.
+
+Honest limitations: OpenAlex has no "professor" flag — seniority is
+proxied by h-index/works-count, and the AI scoring pass (with its
+evidence rules) is the human-in-the-loop filter for industry
+researchers and merged-author junk. Emails/homepages are not included;
+the scoring agent finds them live.
+
+---
+
+# profdash — upstream README below
+
+
 # profdash
 
 **A self-hosted professor outreach tracker for prospective CS grad students.**
