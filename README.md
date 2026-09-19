@@ -1,10 +1,13 @@
 # profdash-ece — OpenAlex discovery for ECE/BME faculty
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Upstream: sahroush/profdash](https://img.shields.io/badge/Upstream-sahroush%2Fprofdash-blue.svg)](https://github.com/sahroush/profdash)
+
 `profdash-ece` is an **extension** of [profdash](https://github.com/sahroush/profdash) — a self-hosted, AI-assisted professor outreach tracker (MIT, by [@sahroush](https://github.com/sahroush)). The upstream core covers import, AI-assisted scoring, outreach, Gmail reply tracking, and the local dashboard; this repository adds the **OpenAlex-backed discovery layer for Electrical & Biomedical Engineering (ECE/BME)** so that pure ECE/BME professors (analog, RF, telecom, power, signal processing, bioelectronics, biomedical engineering, medical physics) can be imported and scored — CSRankings only covers CS.
 
-> **Credit:** everything *not* listed in "What this fork adds" below is upstream work by [@sahroush](https://github.com/sahroush) — see the [upstream README](https://github.com/sahroush/profdash#readme).
+> **Credit & Attribution:** Everything *not* listed in "What this extension adds" below is upstream work by [@sahroush](https://github.com/sahroush) — see the [upstream repository](https://github.com/sahroush/profdash) and [upstream README](https://github.com/sahroush/profdash#readme). Both the upstream core and this extension are released under the [MIT License](LICENSE).
 
-## What this fork adds
+## What this extension adds
 
 | Component | Description |
 | :-- | :-- |
@@ -20,11 +23,16 @@
 git clone https://github.com/alirezanmotiei/profdash-ece.git
 cd profdash-ece
 python -m venv .venv
-source .venv/bin/activate            # Windows: .venv\Scripts\activate
+
+# On Linux/macOS:
+source .venv/bin/activate
+# On Windows:
+.venv\Scripts\activate
+
 pip install -e .                     # core; see pyproject.toml
 pip install -e ".[gmail]"            # optional: Gmail reply tracking
 
-# import ECE/BME faculty from OpenAlex
+# Import ECE/BME faculty from OpenAlex
 prof import openalex --country US --country CA --country DE --country CH \
                      --country GB --country AT --country SE --country NO \
                      --country DK --country NL --country FR --country IT \
@@ -40,4 +48,4 @@ Set `OPENALEX_MAILTO=you@example.com` to join the OpenAlex polite pool.
 
 - Core project: **[sahroush/profdash](https://github.com/sahroush/profdash)** — self-hosted professor outreach tracker (CSRankings import, AI-assisted scoring, Gmail reply scanning, local dashboard), MIT.
 - Full feature documentation: [upstream README](https://github.com/sahroush/profdash#readme).
-- Everything beyond the files listed in "What this fork adds" is upstream work; see [LICENSE](LICENSE) (MIT — upstream core and this extension are both released under it).
+- Everything beyond the files listed in "What this extension adds" is upstream work; see [LICENSE](LICENSE) (MIT — upstream core and this extension are both released under it).
