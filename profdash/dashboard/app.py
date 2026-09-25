@@ -347,12 +347,78 @@ def create_task(request: Request, professor_id: str, task_type: str):
     if task_type not in ("fetch_papers", "draft_email"):
         raise HTTPException(status_code=400, detail="Invalid task type")
     try:
-        db.create_agent_task(professor_id, task_type)
+        task_id = db.create_agent_task(professor_id, task_type)
+        # Execute immediately for real-time responsiveness
+        import httpx
+        from ..workers.tasks import process_fetch_papers, process_draft_email
+        conn = db.connect()
+        try:
+            task_row = dict(conn.execute("SELECT * FROM agent_tasks WHERE id=?", (task_id,)).fetchone())
+            with httpx.Client(timeout=30) as client:
+                if task_type == "fetch_papers":
+                    process_fetch_papers(conn, task_row, _profile, client)
+                elif task_type == "draft_email":
+                    process_draft_email(conn, task_row, _profile, client)
+        except Exception:
+            pass
+        finally:
+            conn.close()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid task type")
-    tasks = db.retry_once_on_lock(db.get_agent_tasks, professor_id=professor_id)
-    return templates.TemplateResponse(request, "_agent_section.html",
-                                      {"tasks": tasks, "p": {"id": professor_id}})
+
+    # Refresh the full detail view so papers and drafts are immediately visible
+    return HTMLResponse(
+        content="",
+        status_code=200,
+        headers={"HX-Refresh": "true"}
+    )
+
+
+@app.post("/professor/{professor_id}/contact")
+def update_contact(request: Request, professor_id: str,
+                   email: str = Form(""), homepage: str = Form(""), scholar: str = Form("")):
+    db.update_professor_contact(professor_id, email=email, homepage=homepage, scholar=scholar)
+    ctx = _professor_detail_ctx(professor_id)
+    if ctx is None:
+        raise HTTPException(status_code=404, detail="Professor not found")
+    p = ctx["p"]
+    parts = [x for x in (p.get("university"), p.get("location_city"),
+                         p.get("location_country")) if x]
+    ctx["subtitle"] = " \u00b7 ".join(parts)
+    return templates.TemplateResponse(request, "_contact_badges.html", ctx)
+
+
+@app.get("/api/openalex/search")
+def openalex_search(request: Request, q: str = ""):
+    if not q.strip():
+        return {"results": []}
+    import httpx
+    import urllib.parse
+    mailto = os.environ.get("OPENALEX_MAILTO", "")
+    url = f"https://api.openalex.org/authors?search={urllib.parse.quote(q.strip())}&per-page=10"
+    if mailto:
+        url += f"&mailto={mailto}"
+    try:
+        with httpx.Client(timeout=15) as client:
+            r = client.get(url, headers={"User-Agent": "profdash/0.1"})
+            if r.status_code == 200:
+                results = []
+                for a in r.json().get("results", []):
+                    insts = a.get("last_known_institutions") or []
+                    inst_name = insts[0].get("display_name") if insts else "Unknown"
+                    country = insts[0].get("country_code") if insts else ""
+                    results.append({
+                        "id": (a.get("id") or "").rsplit("/", 1)[-1],
+                        "name": a.get("display_name"),
+                        "university": inst_name,
+                        "country": country,
+                        "works_count": a.get("works_count", 0),
+                        "h_index": (a.get("summary_stats") or {}).get("h_index", 0),
+                    })
+                return {"results": results}
+    except Exception as e:
+        return {"error": str(e), "results": []}
+    return {"results": []}
 
 
 # --- Confirmations (Gmail suggestion queue) ----------------------------------

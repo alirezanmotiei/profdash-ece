@@ -413,10 +413,14 @@ def get_university_groups(search: str = "", filters: dict[str, str] | None = Non
 # --- Professor detail (Prompt 3) --------------------------------------------
 
 
-def get_professor_by_id(professor_id: str) -> Optional[dict[str, Any]]:
+def get_professor_by_id(professor_id: str, conn: sqlite3.Connection | None = None) -> Optional[dict[str, Any]]:
     """Get full professor details by ID."""
-    with connect() as conn:
-        row = conn.execute(
+    if conn is not None:
+        row = conn.execute("SELECT * FROM professors WHERE id = ?", (professor_id,)).fetchone()
+        return dict(row) if row else None
+
+    with connect() as c:
+        row = c.execute(
             "SELECT * FROM professors WHERE id = ?", (professor_id,)
         ).fetchone()
         if row:
@@ -462,6 +466,35 @@ def update_professor_notes(professor_id: str, notes: str) -> bool:
             (notes, professor_id),
         )
     return True
+
+
+def update_professor_contact(professor_id: str, email: str | None = None,
+                             homepage: str | None = None, scholar: str | None = None,
+                             conn: sqlite3.Connection | None = None) -> bool:
+    """Update contact information (email, homepage, scholar) for a professor."""
+    def _do_update(c):
+        sets = ["updated_at = datetime('now')"]
+        vals = []
+        if email is not None:
+            sets.append("email = ?")
+            vals.append(email.strip() or None)
+        if homepage is not None:
+            sets.append("homepage = ?")
+            vals.append(homepage.strip() or None)
+        if scholar is not None:
+            sets.append("scholar = ?")
+            vals.append(scholar.strip() or None)
+        vals.append(professor_id)
+        cur = c.execute(
+            f"UPDATE professors SET {', '.join(sets)} WHERE id = ?",
+            vals,
+        )
+        return cur.rowcount > 0
+
+    if conn is not None:
+        return _do_update(conn)
+    with connect() as c:
+        return _do_update(c)
 
 
 def change_professor_status(professor_id: str, status: str) -> bool:

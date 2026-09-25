@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import re
 import sqlite3
 import xml.etree.ElementTree as ET
@@ -248,6 +249,81 @@ def log(msg: str):
 
 # --- task implementations ----------------------------------------------------------
 
+BAD_TITLE_PREFIXES = (
+    "author response",
+    "correction to",
+    "publisher correction",
+    "author correction",
+    "corrigendum",
+    "erratum",
+    "reply to",
+    "response to",
+)
+
+
+def fetch_openalex_papers(openalex_id: Optional[str], professor_name: str,
+                          client: httpx.Client, limit: int = 25,
+                          mailto: Optional[str] = None) -> list[dict]:
+    """Fetch recent papers from OpenAlex. Fallback for non-CS fields (ECE/BME/Circuits)."""
+    import os
+    papers = []
+    if not mailto:
+        mailto = os.environ.get("OPENALEX_MAILTO", "")
+
+    def _clean_and_add(results):
+        added = []
+        for w in results:
+            w_type = (w.get("type") or "").lower()
+            if w_type in ("erratum", "paratext", "editorial", "letter"):
+                continue
+            title = (w.get("title") or "").strip().rstrip(".")
+            if not title:
+                continue
+            if any(title.lower().startswith(bad) for bad in BAD_TITLE_PREFIXES):
+                continue
+            y = w.get("publication_year")
+            src = ((w.get("primary_location") or {}).get("source") or {})
+            venue = src.get("display_name") or ""
+            doi = w.get("doi") or (w.get("primary_location") or {}).get("landing_page_url") or ""
+            added.append({
+                "title": title,
+                "venue": venue,
+                "year": int(y) if y else 0,
+                "dblp_url": "",
+                "ee_url": doi,
+                "type": w_type or "article"
+            })
+        return added
+
+    # Strategy 1: if openalex_id is present
+    if openalex_id:
+        url = f"https://api.openalex.org/works?filter=author.id:{openalex_id}&sort=publication_date:desc&per-page={limit}"
+        if mailto:
+            url += f"&mailto={mailto}"
+        try:
+            r = client.get(url, headers={"User-Agent": USER_AGENT}, timeout=25, follow_redirects=True)
+            if r.status_code == 200:
+                papers = _clean_and_add(r.json().get("results", []))
+                if papers:
+                    return papers
+        except Exception as e:
+            log(f"  OpenAlex author works fetch error: {e}")
+
+    # Strategy 2: search by author name
+    clean_name = re.sub(r"\s+", " ", professor_name.strip())
+    url = (f"https://api.openalex.org/works?filter=default.search:{quote(clean_name)},"
+           f"publication_year:>2019&sort=publication_date:desc&per-page={limit}")
+    if mailto:
+        url += f"&mailto={mailto}"
+    try:
+        r = client.get(url, headers={"User-Agent": USER_AGENT}, timeout=25, follow_redirects=True)
+        if r.status_code == 200:
+            papers = _clean_and_add(r.json().get("results", []))
+    except Exception as e:
+        log(f"  OpenAlex name search fallback error: {e}")
+
+    return papers
+
 
 def process_fetch_papers(conn, task: dict, profile: Profile,
                          client: httpx.Client) -> None:
@@ -258,26 +334,37 @@ def process_fetch_papers(conn, task: dict, profile: Profile,
         return
 
     prof_name = prof["professor"]
-    log(f"  Fetching DBLP for {prof_name}...")
-    xml_text = fetch_dblp_xml(prof_name, client, prof.get("dblp_url"))
-    if not xml_text:
-        mark_failed(conn, task["id"],
-                    f"No DBLP results for {prof_name!r} (tried multiple name forms)")
-        return
+    log(f"  Fetching publications for {prof_name}...")
+    papers = []
 
-    author_name = get_author_name(xml_text, prof_name)
-    papers = parse_dblp_xml(xml_text, author_name=author_name)
-    log(f"  Parsed {len(papers)} papers" +
-        (f" (filtered to author {author_name!r})" if author_name else ""))
+    # 1. Try DBLP first
+    xml_text = fetch_dblp_xml(prof_name, client, prof.get("dblp_url"))
+    if xml_text:
+        author_name = get_author_name(xml_text, prof_name)
+        papers = parse_dblp_xml(xml_text, author_name=author_name)
+        if papers:
+            log(f"  Parsed {len(papers)} papers from DBLP")
+
+    # 2. Fall back to OpenAlex (essential for ECE / BME)
     if not papers:
-        mark_failed(conn, task["id"], "DBLP returned hits but none parsed")
+        log(f"  Querying OpenAlex for {prof_name}...")
+        user_mailto = os.environ.get("OPENALEX_MAILTO") or profile.identity.email or None
+        papers = fetch_openalex_papers(prof.get("openalex_id"), prof_name, client, mailto=user_mailto)
+        if papers:
+            log(f"  Parsed {len(papers)} papers from OpenAlex")
+
+    if not papers:
+        mark_failed(conn, task["id"],
+                    f"No publication records found on DBLP or OpenAlex for {prof_name!r}")
         return
 
     selected = select_relevant_papers(papers, profile, limit=4)
     if not selected:
-        mark_failed(conn, task["id"],
-                    f"No recent relevant papers among {len(papers)} fetched")
-        return
+        log(f"  No tier match; selecting newest 3 papers as general publications")
+        papers.sort(key=lambda x: x.get("year", 0), reverse=True)
+        selected = papers[:3]
+        for s in selected:
+            s["relevance_note"] = f"Recent publication at {s.get('venue') or 'journal'} ({s.get('year')})."
 
     conn.execute("DELETE FROM paper_recommendations WHERE professor_id=?",
                  (professor_id,))
@@ -300,53 +387,81 @@ def process_fetch_papers(conn, task: dict, profile: Profile,
 
 
 def compose_email(prof: dict, recs: list[dict], profile: Profile) -> tuple[str, str]:
-    """Deterministic outreach draft from profile identity + scored context."""
+    """High-converting outreach draft generated dynamically from profile identity + recent papers."""
     ident = profile.identity
     last_name = prof["professor"].split()[-1] if prof["professor"] else "Professor"
     university = prof.get("university", "your university")
-
-    subject = f"Prospective graduate student inquiry - {university}"
+    sender_name = ident.name.strip() or "Prospective Student"
 
     paper_refs = []
     for rec in recs[:2]:
-        if rec.get("title"):
-            paper_refs.append(f'"{rec["title"]}" ({rec.get("venue", "")} '
-                              f'{rec.get("year", "")})'.replace(" )", ")"))
+        raw_title = rec.get("title", "").strip().strip('"').strip("'")
+        if not raw_title:
+            continue
+        venue = (rec.get("venue") or "").strip()
+        year = rec.get("year")
+        if venue and year:
+            paper_refs.append(f'"{raw_title}" ({venue}, {year})')
+        elif venue:
+            paper_refs.append(f'"{raw_title}" ({venue})')
+        elif year:
+            paper_refs.append(f'"{raw_title}" ({year})')
+        else:
+            paper_refs.append(f'"{raw_title}"')
+
+    subject = f"Prospective Graduate Student Inquiry — {university} / {sender_name}"
 
     parts = [f"Dear Professor {last_name},", ""]
 
-    bio = ident.bio.strip() or (
-        "I am a prospective graduate student interested in your research group.")
-    parts.append(bio)
+    # Paragraph 1: Direct Hook & Interest
+    parts.append(
+        f"I am writing to express my strong interest in joining your research group at {university} "
+        f"as a prospective graduate student (open to PhD or thesis-based Master's programs)."
+    )
     parts.append("")
 
+    # Paragraph 2: Specific Paper Engagement
     if paper_refs:
         if len(paper_refs) == 1:
-            parts.append(f"I recently read your paper {paper_refs[0]}, "
-                         f"and it aligns closely with my interests.")
+            parts.append(
+                f"I recently read your paper {paper_refs[0]} and was particularly interested in your "
+                f"methodological approach and its implications for advancing the field."
+            )
         else:
-            parts.append(f"I recently read your papers {paper_refs[0]} and "
-                         f"{paper_refs[1]}, which align closely with my interests.")
+            parts.append(
+                f"I recently read your papers {paper_refs[0]} and {paper_refs[1]}, and was particularly inspired "
+                f"by your methodological approach and its experimental validation."
+            )
         parts.append("")
 
-    why = (prof.get("phd_why") or prof.get("masters_why") or "").strip()
-    if len(why.split(".")[0].strip()) > 20:
-        parts.append(f"Based on my research into your group at {university}, "
-                     f"I believe there would be strong alignment with my background.")
-    else:
-        parts.append(f"I would be very interested in joining your group at "
-                     f"{university}, and I would be grateful to hear whether you "
-                     f"expect openings for graduate students.")
+    # Paragraph 3: Candidate Background & Research Alignment (from local profile.toml)
+    if ident.bio.strip():
+        parts.append(ident.bio.strip())
+        parts.append("")
+    elif ident.interests_short.strip():
+        parts.append(
+            f"My research background and interests center on {ident.interests_short.strip()}."
+        )
+        parts.append("")
 
+    # Paragraph 4: Alignment & Call to Action
+    parts.append(
+        f"Given your laboratory's current directions, I would be thrilled to contribute to your ongoing projects. "
+        f"If you anticipate having openings for new graduate students, I would be deeply grateful "
+        f"for the opportunity to have a brief 15-minute conversation to discuss potential fit."
+    )
     parts.append("")
-    parts.append("I have attached my CV for your reference, and I would be happy "
-                 "to provide anything else that is helpful.")
+    parts.append(
+        "I have attached my CV for your review, and I would be delighted to provide any transcripts or project "
+        "materials upon request."
+    )
     parts.append("")
-    parts.append("Best regards,")
-    parts.append(ident.name or "")
+    parts.append("Sincerely,")
     sig = ident.signature.strip()
     if sig:
         parts.append(sig)
+    else:
+        parts.append(sender_name)
 
     return subject, "\n".join(parts)
 

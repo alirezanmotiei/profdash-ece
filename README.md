@@ -11,10 +11,12 @@
 
 | Component | Description |
 | :-- | :-- |
-| `profdash/ingest/openalex.py` | OpenAlex-backed importer: authors from topic subfields 2204 (Biomedical Engineering) and 2208 (Electrical & Electronic Engineering) plus curated adjacent topics (electroporation, radiation therapy, ultrasound, EMG, …), filtered by target countries and seniority thresholds (h-index / works count). Each professor is classified into a `research_bucket`: `biomed`, `circuits`, `ml`, or `ee_general` (new columns: `openalex_id`, `research_bucket`). |
-| `prof digest` fallback | When an author is missing from DBLP (most EE professors are), publications fall back to OpenAlex, and journals are tiered with the `ee-bio` venue preset. |
+| `profdash/ingest/openalex.py` | OpenAlex-backed importer: authors from topic subfields 2204 (Biomedical Engineering) and 2208 (Electrical & Electronic Engineering) plus curated adjacent topics (electroporation, radiation therapy, ultrasound, EMG, …), filtered by target countries and seniority thresholds (h-index / works count). Each professor is classified into a `research_bucket`: `biomed`, `circuits`, `ml`, or `ee_general`. |
+| `profdash/workers/tasks.py` | **Dual-Engine Paper Discovery & Context-Aware Outreach**: Automated OpenAlex API fallback when DBLP returns 0 hits (critical for ECE/BME faculty), noise-filtered (pruning errata, responses, and editorial paratext), and paired with a cold email generator dynamically injecting candidate bio and recent paper citations. |
+| `profdash/dashboard/` | **Interactive Contact Management & Instant Execution**: Added inline HTMX contact editor (email, lab website, Google Scholar), 1-click external academic search links, inline instant worker task execution (`HX-Refresh`), and one-click `mailto:` draft launcher prefilling recipient, subject, and body. |
 | `profdash/presets/ee-bio.toml` | Venue tiers for bioelectronics/ECE (Nature Electronics, IEEE JSSC/TBME/TMTT, …). |
 | `prompts/scoring-pass-ee.md` | Scoring prompt pack tuned for the ECE/BME pipeline. |
+| `tests/` | Automated unit test suite (`pytest`) covering task email generation across research buckets, paper filtering, database contact persistence, and API endpoints. |
 | Target countries | AU / JP / KR / SG / TR added to the OpenAlex import targets. |
 
 ## Install & Run (ECE edition)

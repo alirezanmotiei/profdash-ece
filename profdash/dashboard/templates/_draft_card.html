@@ -1,16 +1,27 @@
 {% from "_macros.html" import card with context %}
 {% if draft %}
-<div id="draft-card" x-data="{ copied: false }">
-  {% call card("Latest Draft", (draft.at|localtz) ~ (" &middot; in Gmail drafts" if draft.gmail_saved else " &middot; stored locally only")) %}
+<div id="draft-card" x-data="{ copied: false, copiedSubj: false }">
+  {% call card("Latest Outreach Draft", (draft.at|localtz) ~ (" &middot; in Gmail drafts" if draft.gmail_saved else " &middot; generated draft")) %}
     <div class="flex items-center justify-between gap-2 mb-2">
-      <h3 class="text-sm font-semibold">{{ draft.subject or '(no subject)' }}</h3>
-      <button @click="navigator.clipboard.writeText($refs.body.innerText); copied = true; setTimeout(() => copied = false, 1500)"
-              class="shrink-0 h-7 px-2.5 rounded-lg border border-line text-xs hover:bg-surface2 transition-colors whitespace-nowrap">
-        <span x-text="copied ? 'Copied!' : 'Copy'"></span>
-      </button>
+      <div class="min-w-0">
+        <span class="text-[11px] text-muted block uppercase tracking-wider">Subject</span>
+        <h3 class="text-sm font-semibold truncate text-foreground">{{ draft.subject or '(no subject)' }}</h3>
+      </div>
+      <div class="flex items-center gap-1.5 shrink-0">
+        {% if p.email %}
+          <a href="mailto:{{ p.email }}?subject={{ draft.subject|urlencode }}&body={{ draft.body|urlencode }}"
+             class="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors whitespace-nowrap shadow-sm">
+            <span>&#9993;</span> Open in Mail
+          </a>
+        {% endif %}
+        <button @click="navigator.clipboard.writeText($refs.body.innerText); copied = true; setTimeout(() => copied = false, 1500)"
+                class="h-7 px-2.5 rounded-lg border border-line bg-surface text-xs hover:bg-surface2 transition-colors whitespace-nowrap">
+          <span x-text="copied ? 'Copied!' : 'Copy Body'"></span>
+        </button>
+      </div>
     </div>
     <div x-ref="body"
-         class="rounded-lg bg-surface2 border border-line p-3 text-sm whitespace-pre-wrap max-h-72 overflow-y-auto leading-relaxed">{{ draft.body }}</div>
+         class="rounded-lg bg-surface2 border border-line p-3.5 text-xs whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed font-sans select-all">{{ draft.body }}</div>
   {% endcall %}
 </div>
 {% endif %}

@@ -6,32 +6,7 @@
 {% block content %}
 {{ page_header(p.professor, subtitle, back_href="/professors", back_label="All professors") }}
 
-<div class="flex flex-wrap items-center gap-2 mb-5">
-  {% if p.homepage %}
-    <a href="{{ p.homepage }}" target="_blank" rel="noopener"
-       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">&#127968; Homepage</a>
-  {% endif %}
-  {% if p.dblp_url %}
-    <a href="{{ p.dblp_url }}" target="_blank" rel="noopener"
-       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">&#128218; DBLP</a>
-  {% endif %}
-  {% if p.scholar %}
-    <a href="{{ p.scholar }}" target="_blank" rel="noopener"
-       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">&#127891; Scholar</a>
-  {% endif %}
-  {% if p.orcid %}
-    <a href="https://orcid.org/{{ p.orcid }}" target="_blank" rel="noopener"
-       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">ORCID</a>
-  {% endif %}
-  {% if p.email %}
-    <a href="mailto:{{ p.email }}"
-       class="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-line bg-surface text-xs hover:border-accent/60 hover:text-accent transition-colors">&#9993; {{ p.email }}</a>
-  {% endif %}
-  <span class="inline-flex items-center h-7 px-2.5 rounded-full bg-surface2 text-xs text-muted">
-    CSRankings #{{ p.csrankings_rank }}{% if p.prestige_band and p.prestige_band != 'unknown' %} &middot; prestige {{ p.prestige_band }}{% endif %}
-  </span>
-  {{ status_badge(p.status) }}
-</div>
+{% include "_contact_badges.html" %}
 
 <div class="grid lg:grid-cols-3 gap-4">
 
